@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Environment & Credentials
+.env
+.env.local
+accounts.yaml
+scripts/.token_cache*.json
+
+# Temp files
+/tmp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated articles (keep templates, ignore outputs)
+article.md
+article.html
+article_preview.html
+
+# IDE
+.vscode/
+.idea/

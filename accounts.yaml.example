@@ -1,0 +1,25 @@
+# 多公众号账号配置示例
+# 复制此文件为 accounts.yaml 并填入真实凭证
+# 使用 --account <名称> 指定发布到哪个公众号
+
+# 默认账号（不指定 --account 时使用）
+default: main
+
+accounts:
+  main:
+    name: "我的主公众号"
+    app_id: "wx1234567890abcdef"
+    app_secret: "your_app_secret_here"
+    author: "飞哥"
+
+  tech:
+    name: "技术博客号"
+    app_id: "wx0987654321fedcba"
+    app_secret: "another_app_secret"
+    author: "技术团队"
+
+  company:
+    name: "公司官方号"
+    app_id: "wxabcdef1234567890"
+    app_secret: "company_app_secret"
+    author: "官方"
