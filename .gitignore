@@ -27,3 +27,4 @@ article_preview.html
 # IDE
 .vscode/
 .idea/
+.gstack/
