@@ -2,7 +2,7 @@
 
 微信公众号文章自动创作与发布工具。从选题搜索、文章撰写、AI配图生成、排版美化到发布草稿箱，一条命令搞定全流程。
 
-可作为 [Claude Code](https://claude.ai/code) 的 Skill 使用，也可以独立命令行调用。
+可作为 [Claude Code](https://claude.ai/code)、Codex、OpenClaw 的 Skill 使用，也可以独立命令行调用。
 
 ## 功能特性
 
@@ -18,7 +18,7 @@
 
 ```
 wechat-publisher/
-├── SKILL.md              # Claude Code Skill 定义文件（6阶段工作流）
+├── SKILL.md              # 通用 Skill 定义文件（6阶段工作流）
 ├── README.md             # 项目说明
 ├── .env.example          # 环境变量模板
 ├── .gitignore
@@ -71,15 +71,77 @@ python3 -c "from wechat_api import get_access_token; print('连接成功:', get_
 
 ## 使用方式
 
-### 方式一：作为 Claude Code Skill（推荐）
+### 方式一：安装到 Agent 客户端（推荐）
 
-将项目复制到 Claude Code 的 skills 目录：
+本项目的核心入口是根目录下的 `SKILL.md`，推荐用**软链接**安装。这样后续只要更新当前仓库，Claude、Codex、OpenClaw 都会自动读到最新版本，不需要重复复制。
+
+#### Claude Code
+
+推荐安装：
 
 ```bash
-cp -r wechat-publisher ~/.claude/skills/wechat-publisher
+mkdir -p ~/.claude/skills
+ln -s "$(pwd)" ~/.claude/skills/wechat-publisher
 ```
 
-然后在 Claude Code 中直接用自然语言：
+如果目标目录已存在，可先删除旧目录，或改用复制安装：
+
+```bash
+cp -R "$(pwd)" ~/.claude/skills/wechat-publisher
+```
+
+安装后重启 Claude Code，或开启一个新会话让 skill 被重新发现。
+
+#### Codex
+
+推荐安装：
+
+```bash
+mkdir -p ~/.codex/skills
+ln -s "$(pwd)" ~/.codex/skills/wechat-publisher
+```
+
+如果你不想使用软链接，也可以复制：
+
+```bash
+cp -R "$(pwd)" ~/.codex/skills/wechat-publisher
+```
+
+安装后重启 Codex，让新的 skill discovery 生效。
+
+#### OpenClaw
+
+OpenClaw 支持两种放置方式：
+
+- **共享安装**：放到 `~/.openclaw/skills/`，所有 agent 共用
+- **工作区安装**：放到 `<workspace>/skills/`，只在该工作区内生效，且优先级更高
+
+共享安装示例：
+
+```bash
+mkdir -p ~/.openclaw/skills
+ln -s "$(pwd)" ~/.openclaw/skills/wechat-publisher
+```
+
+工作区安装示例：
+
+```bash
+mkdir -p /path/to/openclaw-workspace/skills
+ln -s "$(pwd)" /path/to/openclaw-workspace/skills/wechat-publisher
+```
+
+安装后执行以下命令验证并刷新：
+
+```bash
+openclaw skills list
+openclaw gateway restart
+```
+
+如果你正在聊天会话中，也可以直接新开一个会话来重新加载 skill。
+
+#### 使用示例
+
+安装完成后，在支持 slash skill 或自然语言触发的客户端里都可以这样使用：
 
 ```
 使用 /wechat-publisher 写一篇关于"大模型Agent最新进展"的公众号文章
@@ -100,7 +162,7 @@ cp -r wechat-publisher ~/.claude/skills/wechat-publisher
 文章2: [URL]
 ```
 
-Skill 会自动执行6阶段工作流：搜索素材 → 撰写文章 → 生成配图 → 转换排版 → 上传图片 → 发布草稿。
+Skill 会自动执行 6 阶段工作流：搜索素材 → 撰写文章 → 生成配图 → 转换排版 → 上传图片 → 发布草稿。
 
 ### 方式二：命令行调用
 
