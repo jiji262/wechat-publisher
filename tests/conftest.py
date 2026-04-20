@@ -1,0 +1,154 @@
+"""
+pytest fixtures for wechat-publisher.
+
+Key goals:
+- Tests must run **without** real WeChat credentials.
+- All network calls are monkeypatched to raise so accidental real HTTP
+  during tests fails loudly instead of silently hitting the internet.
+- `scripts/` is added to sys.path so tests can `import config`,
+  `import ai_score`, `import html_converter` directly.
+"""
+
+from __future__ import annotations
+
+import sys
+import textwrap
+from pathlib import Path
+
+import pytest
+
+# Make scripts/ importable for all test files.
+_SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+
+# ---------------------------------------------------------------------------
+# accounts.yaml fixture
+# ---------------------------------------------------------------------------
+
+# Minimal but realistic accounts.yaml content — mirrors accounts.yaml.example
+# just enough for config.py to parse successfully. No real credentials.
+_MIN_ACCOUNTS_YAML = textwrap.dedent(
+    """\
+    default: main
+
+    accounts:
+      main:
+        name: "Test Main"
+        app_id: "wx_fake_main_app_id_0001"
+        app_secret: "fake_main_secret"
+        author: "飞哥"
+        theme: "clean-modern"
+        voice: "test-voice-main"
+
+      tech:
+        name: "Test Tech"
+        app_id: "wx_fake_tech_app_id_0002"
+        app_secret: "fake_tech_secret"
+        author: "葱哥"
+        theme: "minimal-mono"
+        voice: "test-voice-tech"
+    """
+)
+
+
+@pytest.fixture
+def tmp_accounts_yaml(tmp_path, monkeypatch):
+    """
+    Drop a minimal `accounts.yaml` into a temp directory and chdir into it.
+
+    `config._find_accounts_yaml` checks CWD first, so this lets `get_config()`
+    load our fixture file without touching the real project root.
+
+    Yields the parsed dict (handy when tests want to double-check what's in
+    the file they're testing against).
+    """
+    import yaml
+
+    yaml_path = tmp_path / "accounts.yaml"
+    yaml_path.write_text(_MIN_ACCOUNTS_YAML, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    # Reset any active account set by a previous test.
+    try:
+        import config
+        config.set_account(None)
+    except ImportError:
+        pass
+
+    data = yaml.safe_load(_MIN_ACCOUNTS_YAML)
+    yield data
+
+    # Teardown: clear active account again so leakage doesn't affect later tests.
+    try:
+        import config
+        config.set_account(None)
+    except ImportError:
+        pass
+
+
+@pytest.fixture
+def write_accounts_yaml(tmp_path, monkeypatch):
+    """
+    Like `tmp_accounts_yaml` but returns a writer function so a test can
+    supply custom YAML content (e.g. to test sync_platforms variants, or
+    a missing default).
+    """
+    monkeypatch.chdir(tmp_path)
+
+    try:
+        import config
+        config.set_account(None)
+    except ImportError:
+        pass
+
+    def _write(yaml_text: str) -> Path:
+        p = tmp_path / "accounts.yaml"
+        p.write_text(yaml_text, encoding="utf-8")
+        return p
+
+    yield _write
+
+    try:
+        import config
+        config.set_account(None)
+    except ImportError:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Network blocker
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def no_network(monkeypatch):
+    """
+    Monkeypatch requests.get / requests.post to raise so the test fails
+    loudly if a code path accidentally hits the real WeChat API.
+
+    Usage:
+        def test_thing(no_network):
+            ...  # if requests.get is called, RuntimeError is raised
+    """
+    def _boom(*args, **kwargs):
+        raise RuntimeError(
+            "Accidental network call in a unit test — mock this explicitly."
+        )
+
+    try:
+        import requests
+        monkeypatch.setattr(requests, "get", _boom)
+        monkeypatch.setattr(requests, "post", _boom)
+    except ImportError:
+        # requests not installed — nothing to block.
+        pass
+
+    # Also block urllib just in case.
+    try:
+        import urllib.request
+        monkeypatch.setattr(urllib.request, "urlopen", _boom)
+    except ImportError:
+        pass
+
+    yield

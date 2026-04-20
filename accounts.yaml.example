@@ -11,12 +11,16 @@ accounts:
     app_id: "wx1234567890abcdef"
     app_secret: "your_app_secret_here"
     author: "飞哥"
+    # 可选:发到微信后用 --sync-from-config 可自动同步到这些平台
+    # 依赖 @wechatsync/cli + Chrome 扩展,详见 SKILL.md 阶段七
+    # sync_platforms: [zhihu, juejin, csdn]
 
   tech:
     name: "技术博客号"
     app_id: "wx0987654321fedcba"
     app_secret: "another_app_secret"
     author: "技术团队"
+    # sync_platforms: [juejin, csdn, segmentfault]
 
   company:
     name: "公司官方号"

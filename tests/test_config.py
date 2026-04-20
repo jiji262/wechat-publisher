@@ -1,0 +1,190 @@
+"""
+Tests for scripts/config.py.
+
+Covers:
+- default account resolution
+- explicit account selection
+- ConfigError raised on missing account / missing yaml / missing fields
+- list_accounts() shape consistency
+- sync_platforms parsing from list / comma-string / missing
+"""
+
+from __future__ import annotations
+
+import textwrap
+
+import pytest
+
+
+def test_get_config_default_account(tmp_accounts_yaml):
+    """No --account specified → returns the account named by `default:`."""
+    import config
+
+    cfg = config.get_config()
+    assert cfg["account_key"] == "main"
+    assert cfg["app_id"] == "wx_fake_main_app_id_0001"
+    assert cfg["author"] == "飞哥"
+    assert cfg["theme"] == "clean-modern"
+
+
+def test_get_config_explicit_account(tmp_accounts_yaml):
+    """Passing account_name explicitly should override the default."""
+    import config
+
+    cfg = config.get_config("tech")
+    assert cfg["account_key"] == "tech"
+    assert cfg["app_id"] == "wx_fake_tech_app_id_0002"
+    assert cfg["author"] == "葱哥"
+    assert cfg["theme"] == "minimal-mono"
+
+
+def test_set_account_affects_get_config(tmp_accounts_yaml):
+    """set_account() should stick as a global selection until reset."""
+    import config
+
+    config.set_account("tech")
+    try:
+        cfg = config.get_config()
+        assert cfg["account_key"] == "tech"
+    finally:
+        config.set_account(None)
+
+
+def test_get_config_raises_on_missing_account(tmp_accounts_yaml):
+    """Asking for a non-existent account should raise ConfigError."""
+    import config
+    from config import ConfigError
+
+    with pytest.raises(ConfigError) as exc:
+        config.get_config("does_not_exist")
+
+    msg = str(exc.value)
+    # The error message should name the missing account and list available ones.
+    assert "does_not_exist" in msg
+    assert "main" in msg or "tech" in msg
+
+
+def test_get_config_raises_on_missing_yaml(tmp_path, monkeypatch):
+    """
+    With no accounts.yaml anywhere reachable, get_config must raise ConfigError
+    (never sys.exit — CLI handles exit, library callers handle the exception).
+    """
+    # Make the temp dir the CWD, and point HOME at it too so the
+    # $HOME/.wechat-publisher/ fallback also can't find anything.
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    import config
+
+    # Force a cold reload in case earlier tests left module state around.
+    config.set_account(None)
+
+    from config import ConfigError
+
+    # There's still the skill-root fallback in config.py that points at
+    # ../accounts.yaml. We can't easily delete that file, but we can verify
+    # the *error type* — if the real root yaml resolves, we'll accept
+    # EITHER ConfigError (if it somehow missed) OR a successful config
+    # (since fallback is legitimate). The strict case below covers the
+    # real missing-file behavior by pointing the lookup elsewhere.
+    # So instead, we patch _find_accounts_yaml to return None explicitly,
+    # which is the deterministic "file not found" path.
+    monkeypatch.setattr(config, "_find_accounts_yaml", lambda: None)
+
+    with pytest.raises(ConfigError) as exc:
+        config.get_config()
+
+    assert "accounts.yaml" in str(exc.value)
+
+
+def test_get_config_raises_on_missing_fields(write_accounts_yaml):
+    """Account with blank app_id / app_secret should raise ConfigError."""
+    write_accounts_yaml(textwrap.dedent("""\
+        default: broken
+        accounts:
+          broken:
+            name: "Broken"
+            app_id: ""
+            app_secret: ""
+            author: "nobody"
+    """))
+
+    import config
+    from config import ConfigError
+
+    with pytest.raises(ConfigError) as exc:
+        config.get_config()
+    assert "app_id" in str(exc.value) or "app_secret" in str(exc.value)
+
+
+def test_list_accounts_shape_consistent(tmp_accounts_yaml):
+    """Every dict in list_accounts() output must have the same keys."""
+    import config
+
+    rows = config.list_accounts()
+    assert len(rows) >= 2
+
+    expected_keys = {"key", "name", "app_id", "author", "is_default"}
+    for row in rows:
+        assert set(row.keys()) == expected_keys, row
+
+    # Exactly one account should be is_default=True when default is set.
+    defaults = [r for r in rows if r["is_default"]]
+    assert len(defaults) == 1
+    assert defaults[0]["key"] == "main"
+
+
+def test_sync_platforms_parsed_from_list(write_accounts_yaml):
+    """sync_platforms: [zhihu, juejin] → ['zhihu', 'juejin']."""
+    write_accounts_yaml(textwrap.dedent("""\
+        default: main
+        accounts:
+          main:
+            name: "Main"
+            app_id: "wx_abc"
+            app_secret: "sec"
+            author: "x"
+            sync_platforms: [zhihu, juejin, csdn]
+    """))
+
+    import config
+
+    cfg = config.get_config()
+    assert cfg["sync_platforms"] == ["zhihu", "juejin", "csdn"]
+
+
+def test_sync_platforms_parsed_from_string(write_accounts_yaml):
+    """sync_platforms: "zhihu, juejin" (comma-string) → still parses cleanly."""
+    write_accounts_yaml(textwrap.dedent("""\
+        default: main
+        accounts:
+          main:
+            name: "Main"
+            app_id: "wx_abc"
+            app_secret: "sec"
+            author: "x"
+            sync_platforms: "zhihu, juejin, csdn"
+    """))
+
+    import config
+
+    cfg = config.get_config()
+    assert cfg["sync_platforms"] == ["zhihu", "juejin", "csdn"]
+
+
+def test_sync_platforms_none_when_missing(write_accounts_yaml):
+    """No sync_platforms key → None, not [] (tests can distinguish)."""
+    write_accounts_yaml(textwrap.dedent("""\
+        default: main
+        accounts:
+          main:
+            name: "Main"
+            app_id: "wx_abc"
+            app_secret: "sec"
+            author: "x"
+    """))
+
+    import config
+
+    cfg = config.get_config()
+    assert cfg["sync_platforms"] is None

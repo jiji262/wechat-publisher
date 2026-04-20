@@ -17,12 +17,99 @@ import sys
 import json
 import hashlib
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse, quote
 
 # 导入微信API
 sys.path.insert(0, str(Path(__file__).parent))
 from wechat_api import upload_content_image, upload_thumb_image, set_account
+
+
+# ============================================================
+# 上传去重 manifest
+# ============================================================
+# 目的：同一张图在多次发布中避免重复上传到微信 uploadimg 接口。
+# 以文件字节的 md5 作 key，CDN URL 作 value，持久化到 temp_dir。
+# 注：封面图走永久素材接口(add_material)，用户期望每次草稿都是新的封面,
+# 因此只对正文图片 upload_content_image 做去重。
+
+MANIFEST_FILENAME = ".uploaded_manifest.json"
+
+
+def _manifest_path(temp_dir):
+    """返回 manifest 文件路径。"""
+    return Path(temp_dir) / MANIFEST_FILENAME
+
+
+def hash_file_bytes(path):
+    """计算文件字节的 md5 (去重的 key)。"""
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def load_manifest(temp_dir):
+    """
+    加载 temp_dir 下的上传去重 manifest。
+    文件缺失/损坏时返回空 dict,不抛异常。
+    """
+    mf = _manifest_path(temp_dir)
+    if not mf.exists():
+        return {}
+    try:
+        with open(mf, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return {str(k): str(v) for k, v in data.items() if v}
+        return {}
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"  警告：manifest 读取失败，将按空处理 ({mf}): {e}")
+        return {}
+
+
+def save_manifest(temp_dir, manifest):
+    """把 manifest dict 写回磁盘,失败只打印警告,不阻断发布。"""
+    mf = _manifest_path(temp_dir)
+    try:
+        mf.parent.mkdir(parents=True, exist_ok=True)
+        with open(mf, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        print(f"  警告：manifest 写入失败 ({mf}): {e}")
+
+
+def upload_content_image_cached(local_path, temp_dir, manifest=None):
+    """
+    带 md5 去重的正文图片上传。
+    - manifest 命中 → 直接返回缓存 URL,打印"跳过重复上传"
+    - 未命中 → 调用 upload_content_image 并写回 manifest
+
+    Args:
+        local_path: 本地图片路径
+        temp_dir: manifest 目录(通常与图片 temp_dir 相同)
+        manifest: 可选,外部传入以避免反复磁盘 IO;None 时从磁盘加载
+
+    Returns:
+        微信 CDN URL
+    """
+    owns_manifest = manifest is None
+    if manifest is None:
+        manifest = load_manifest(temp_dir)
+
+    digest = hash_file_bytes(local_path)
+    cached = manifest.get(digest)
+    if cached:
+        print(f"  跳过重复上传 (md5={digest[:8]}…) → {cached[:60]}…")
+        return cached
+
+    wechat_url = upload_content_image(local_path)
+    manifest[digest] = wechat_url
+    if owns_manifest:
+        save_manifest(temp_dir, manifest)
+    return wechat_url
 
 
 # ============================================================
@@ -66,9 +153,12 @@ def download_image(url, save_dir, filename=None, timeout=15, max_retries=2):
             resp = requests.get(url, headers=headers, timeout=timeout, stream=True, allow_redirects=True)
             resp.raise_for_status()
 
-            # 检查是否真的是图片
+            # 检查是否真的是图片(放在重试循环内,允许瞬时的错误 content-type 后续重试)
             content_type = resp.headers.get("Content-Type", "")
             if "image" not in content_type and "octet-stream" not in content_type:
+                if attempt < max_retries:
+                    print(f"  非图片类型 ({content_type})，重试 ({attempt+1}/{max_retries})...")
+                    continue
                 print(f"  警告：{url[:60]} 返回的不是图片类型 ({content_type})")
                 return None
 
@@ -82,7 +172,7 @@ def download_image(url, save_dir, filename=None, timeout=15, max_retries=2):
                 filepath.unlink()
                 return None
             if file_size > 10 * 1024 * 1024:
-                print(f"  警告：图片过大 ({file_size/1024/1024:.1f}MB)，尝试跳过")
+                print(f"  警告：图片过大 ({file_size/1024/1024:.1f}MB)，尝试跳过：{url[:60]}")
                 filepath.unlink()
                 return None
 
@@ -250,13 +340,16 @@ def process_article_images(md_content, temp_dir="/tmp/wechat_images"):
     """
     完整的文章图片处理流程：
     1. 提取Markdown中的所有图片引用
-    2. 下载外部图片到本地
-    3. 上传所有图片到微信服务器
+    2. 下载外部图片到本地(串行,便于打印进度和控制重试)
+    3. 并行上传到微信服务器(md5 去重,已上传过的直接复用 CDN URL)
     4. 替换Markdown中的图片链接
+
+    环境变量:
+        WECHAT_UPLOAD_WORKERS - 并发上传的线程数(默认 4,设为 1 即为串行)
 
     Args:
         md_content: Markdown文章内容
-        temp_dir: 临时图片目录
+        temp_dir: 临时图片目录(同时用于存放 .uploaded_manifest.json)
 
     Returns:
         tuple: (处理后的Markdown, 图片映射字典, 第一张图片的本地路径)
@@ -271,40 +364,80 @@ def process_article_images(md_content, temp_dir="/tmp/wechat_images"):
 
     print(f"发现 {len(images)} 张图片，开始处理...")
 
-    mapping = {}  # 原始URL → 微信URL
-    first_image_path = None
-
+    # ------------------------------------------------------------
+    # 阶段 1: 逐张解析为本地路径(download/已本地)
+    # ------------------------------------------------------------
+    # resolved[i] = (url, local_path or None)
+    resolved = []
     for i, img in enumerate(images):
         url = img["url"]
         alt = img["alt"]
         print(f"[{i+1}/{len(images)}] 处理图片：{alt or url[:50]}")
 
         local_path = None
-
-        # 判断是本地文件还是网络URL
         if url.startswith(("http://", "https://")):
             local_path = download_image(url, temp_dir, filename=f"article_{i}.jpg")
         elif Path(url).exists():
             local_path = url
         else:
             print(f"  跳过无效路径：{url}")
-            continue
 
-        if local_path:
-            if first_image_path is None:
-                first_image_path = local_path
+        resolved.append((url, local_path))
 
-            try:
-                wechat_url = upload_content_image(local_path)
+    # first_image_path 用第一个成功解析到本地的图片(保持原顺序)
+    first_image_path = next((lp for _, lp in resolved if lp), None)
+
+    # ------------------------------------------------------------
+    # 阶段 2: 并行上传到微信(带 md5 去重)
+    # ------------------------------------------------------------
+    try:
+        workers = int(os.environ.get("WECHAT_UPLOAD_WORKERS", "4"))
+    except ValueError:
+        workers = 4
+    workers = max(1, min(workers, 16))
+
+    manifest = load_manifest(temp_dir)
+    mapping = {}  # 原始URL → 微信URL
+
+    def _do_upload(idx, url, local_path):
+        """单张上传任务,返回 (idx, url, wechat_url or None)。"""
+        if not local_path:
+            return idx, url, None
+        try:
+            wechat_url = upload_content_image_cached(local_path, temp_dir, manifest=manifest)
+            print(f"  [{idx+1}] 上传成功 → {wechat_url[:60]}...")
+            return idx, url, wechat_url
+        except Exception as e:
+            print(f"  [{idx+1}] 上传失败 ({local_path}): {e}")
+            return idx, url, None
+
+    if workers == 1 or len(resolved) <= 1:
+        # 串行路径
+        for idx, (url, local_path) in enumerate(resolved):
+            _, _, wechat_url = _do_upload(idx, url, local_path)
+            if wechat_url:
                 mapping[url] = wechat_url
-                print(f"  上传成功 → {wechat_url[:60]}...")
-            except Exception as e:
-                print(f"  上传失败：{e}")
+    else:
+        # 并行路径。ThreadPoolExecutor 在 GIL 下对 IO-bound 上传足够。
+        # manifest 是 dict,CPython 的 dict 写入是线程安全(atomic)的,
+        # 同一图片出现两次的罕见情况下可能多传一次,但结果仍一致。
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [
+                pool.submit(_do_upload, idx, url, local_path)
+                for idx, (url, local_path) in enumerate(resolved)
+            ]
+            for fut in futures:
+                idx, url, wechat_url = fut.result()
+                if wechat_url:
+                    mapping[url] = wechat_url
+
+    # 批量持久化 manifest(一次性落盘,避免并发写竞争)
+    save_manifest(temp_dir, manifest)
 
     # 替换Markdown中的图片链接
     processed_md = replace_images_in_markdown(md_content, mapping)
 
-    print(f"图片处理完成：{len(mapping)}/{len(images)} 张成功上传")
+    print(f"图片处理完成：{len(mapping)}/{len(images)} 张成功上传(并发={workers})")
     return processed_md, mapping, first_image_path
 
 

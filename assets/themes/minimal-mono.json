@@ -1,0 +1,53 @@
+{
+  "theme_name": "minimal-mono",
+  "description": "极简黑白 - 只用粗细和留白做层级,适合技术/工程向文章(tech 号默认)",
+  "styles": {
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #1a1a1a; line-height: 1.8; letter-spacing: 0.4px; word-spacing: 1px; padding: 15px 0;",
+
+    "h1": "font-size: 22px; font-weight: 800; color: #000000; text-align: left; margin: 36px 0 20px; padding-bottom: 10px; border-bottom: 3px solid #000000;",
+
+    "h2": "font-size: 18px; font-weight: 800; color: #000000; margin: 34px 0 14px; padding: 0; line-height: 1.5;",
+
+    "h3": "font-size: 15px; font-weight: 700; color: #1a1a1a; margin: 22px 0 10px; padding: 0; text-transform: none;",
+
+    "p": "margin: 14px 0; text-indent: 0; text-align: justify; color: #1a1a1a;",
+
+    "blockquote": "margin: 22px 0; padding: 14px 18px 14px 20px; background: #f5f5f5; border-left: 3px solid #000000; color: #2a2a2a; font-size: 14px; border-radius: 0; line-height: 1.8;",
+
+    "img": "max-width: 100%; height: auto; border-radius: 2px; margin: 20px auto; display: block; border: 1px solid #e5e5e5;",
+
+    "strong": "color: #000000; font-weight: 800; background: #f0f0f0; padding: 0 3px;",
+
+    "em": "font-style: italic; color: #4a4a4a;",
+
+    "code_inline": "background: #efefef; color: #c7254e; padding: 2px 6px; border-radius: 2px; font-size: 13px; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;",
+
+    "code_block": "background: #0d0d0d; color: #e5e5e5; padding: 18px 22px; border-radius: 4px; font-size: 13px; line-height: 1.7; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; margin: 20px 0; border: 1px solid #222;",
+
+    "ul": "margin: 14px 0; padding-left: 20px; list-style-type: none;",
+    "ol": "margin: 14px 0; padding-left: 24px; list-style-type: decimal;",
+    "li": "margin: 6px 0; line-height: 1.8; position: relative; padding-left: 6px;",
+
+    "hr": "border: none; height: 1px; background: #000000; margin: 36px 0; opacity: 0.2;",
+
+    "a": "color: #000000; text-decoration: none; border-bottom: 1px solid #000000;",
+
+    "table": "width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; border: 1px solid #000000;",
+    "th": "background: #000000; color: #ffffff; padding: 10px 12px; text-align: left; font-weight: 700; font-size: 12px; font-family: 'JetBrains Mono', monospace;",
+    "td": "padding: 9px 12px; border-bottom: 1px solid #e5e5e5; color: #1a1a1a;",
+
+    "caption": "font-size: 12px; color: #888; text-align: center; margin-top: 10px; letter-spacing: 0.3px;",
+
+    "section_divider": "text-align: center; color: #000000; letter-spacing: 14px; font-size: 11px; margin: 32px 0; user-select: none; opacity: 0.4;"
+  },
+  "highlights": {
+    "hl_yellow": "background: #fff3a3; color: #1a1a1a; padding: 1px 4px; border-radius: 0; font-weight: 500;",
+    "hl_blue":   "background: #e8efff; color: #1a1a1a; padding: 1px 4px; border-radius: 0; font-weight: 500;",
+    "hl_pink":   "background: #ffe0ec; color: #1a1a1a; padding: 1px 4px; border-radius: 0; font-weight: 500;",
+    "hl_green":  "background: #dfeedb; color: #1a1a1a; padding: 1px 4px; border-radius: 0; font-weight: 500;",
+    "em_red":    "color: #c7254e; font-weight: 800;",
+    "em_blue":   "color: #1a4ed8; font-weight: 800;",
+    "em_orange": "color: #d46b08; font-weight: 800;"
+  },
+  "section_divider_text": "/ / /"
+}

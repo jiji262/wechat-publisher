@@ -2,82 +2,145 @@
 """
 Markdown → 微信公众号 HTML 转换器
 
-微信公众号编辑器的特殊限制：
-- 不支持外部CSS和JS引用
-- 不支持class和id属性（部分支持但不可靠）
-- 所有样式必须使用内联style
-- 不支持<style>标签
-- 不支持position、float等部分CSS属性
-- 图片必须使用微信CDN的URL
+微信公众号编辑器的特殊限制:
+- 不支持外部 CSS 和 JS 引用
+- 不支持 class 和 id 属性(部分支持但不可靠)
+- 所有样式必须使用内联 style
+- 不支持 <style> 标签
+- 不支持 position、float 等部分 CSS 属性
+- 图片必须使用微信 CDN 的 URL
 
-本转换器将Markdown转换为满足以上限制的HTML，
-并应用精美的内联排版样式。
+本转换器将 Markdown 转换为满足以上限制的 HTML,并应用精美的内联排版样式。
+
+## 支持的 Markdown 扩展语法(排版增强标记)
+
+除了标准 Markdown 之外,本转换器支持以下自定义行内标记,用来让段内
+文字有更丰富的标色变化(字体颜色 + 背景高亮):
+
+| 标记           | 含义          | 效果               |
+|----------------|---------------|--------------------|
+| `**文本**`     | 加粗(主强调)| 深色 + 黄色下划线  |
+| `==文本==`     | 黄色高亮      | 荧光笔马克效果     |
+| `++文本++`     | 蓝色高亮      | 冷色马克效果       |
+| `%%文本%%`     | 粉色高亮      | 警示马克效果       |
+| `&&文本&&`     | 绿色高亮      | 正向马克效果       |
+| `!!文本!!`     | 红色强调      | 警告/反对/关键数字 |
+| `@@文本@@`     | 蓝色强调      | 链接/术语/名词     |
+| `^^文本^^`     | 橙色强调      | 温暖点缀           |
+| `*文本*`       | 斜体          | 保留                |
+
+写作时在同一篇文章里混用多种标记,避免"整篇只有一种加粗色"的
+AI 号指纹。建议密度:每 500 字出现 3-5 处行内标记,但不要集中堆在
+同一段里。
+
+## 主题
+
+样式从 assets/themes/<theme>.json 加载,默认 clean-modern。
+每个主题包含 styles(标签样式)+ highlights(行内标记样式)+
+section_divider_text(分节符字符)。
 """
 
 import re
 import json
 import sys
+import html
 from pathlib import Path
 
 
 # ============================================================
-# 样式配置
+# 样式加载 / 主题解析
 # ============================================================
 
 DEFAULT_STYLES = {
-    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #3f3f3f; line-height: 2; letter-spacing: 0.8px; word-spacing: 2px; padding: 15px 0;",
-
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #3f3f3f; line-height: 1.8; letter-spacing: 0.6px; word-spacing: 2px; padding: 15px 0;",
     "h1": "font-size: 21px; font-weight: 700; color: #1a1a2e; text-align: center; margin: 36px 0 24px; padding-bottom: 14px;",
-
     "h2": "font-size: 18px; font-weight: 700; color: #1a1a2e; margin: 32px 0 16px; padding: 8px 0 8px 14px; border-left: 4px solid #4a6cf7; background: linear-gradient(to right, #f0f4ff, transparent); border-radius: 0 4px 4px 0; line-height: 1.5;",
-
     "h3": "font-size: 16px; font-weight: 600; color: #2d3748; margin: 24px 0 12px; padding-left: 10px;",
-
     "p": "margin: 14px 0; text-indent: 0; text-align: justify; color: #3f3f3f;",
-
-    "blockquote": "margin: 24px 0; padding: 16px 20px 16px 24px; background: #f8f9fc; border-left: 3px solid #4a6cf7; color: #5a6577; font-size: 14px; border-radius: 0 8px 8px 0; line-height: 1.9;",
-
+    "blockquote": "margin: 24px 0; padding: 16px 20px 16px 24px; background: #f8f9fc; border-left: 3px solid #4a6cf7; color: #5a6577; font-size: 14px; border-radius: 0 8px 8px 0; line-height: 1.85;",
     "img": "max-width: 100%; height: auto; border-radius: 6px; margin: 20px auto; display: block; box-shadow: 0 4px 16px rgba(0,0,0,0.06);",
-
-    "strong": "color: #4a6cf7; font-weight: 600;",
-
+    "strong": "color: #1a1a2e; font-weight: 700; border-bottom: 2px solid #ffe066; padding: 0 1px;",
     "em": "font-style: italic; color: #666;",
-
     "code_inline": "background: #f1f3f8; color: #4a6cf7; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-family: 'Menlo', 'Consolas', 'SF Mono', monospace;",
-
     "code_block": "background: #1e1e2e; color: #cdd6f4; padding: 18px 22px; border-radius: 10px; font-size: 13px; line-height: 1.7; font-family: 'Menlo', 'Consolas', 'SF Mono', monospace; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; margin: 20px 0;",
-
     "ul": "margin: 14px 0; padding-left: 8px; list-style-type: none;",
     "ol": "margin: 14px 0; padding-left: 24px; list-style-type: decimal;",
-    "li": "margin: 8px 0; line-height: 1.9; padding-left: 6px;",
-
+    "li": "margin: 8px 0; line-height: 1.85; padding-left: 6px;",
     "hr": "border: none; height: 1px; background: linear-gradient(to right, transparent, #d1d9e6, transparent); margin: 36px 0;",
-
     "a": "color: #4a6cf7; text-decoration: none; border-bottom: 1px solid rgba(74,108,247,0.3);",
-
     "table": "width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;",
     "th": "background: #4a6cf7; color: #ffffff; padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px;",
     "td": "padding: 10px 14px; border-bottom: 1px solid #eef1f6; color: #4a5568;",
-
     "caption": "font-size: 12px; color: #a0aec0; text-align: center; margin-top: 10px;",
+    "section_divider": "text-align: center; color: #c5cee0; letter-spacing: 10px; font-size: 12px; margin: 32px 0; user-select: none;",
 }
+
+DEFAULT_HIGHLIGHTS = {
+    "hl_yellow": "background: #fff3a3; color: #3f3f3f; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
+    "hl_blue":   "background: #e0e9ff; color: #2638a8; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
+    "hl_pink":   "background: #ffe0ec; color: #b3125a; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
+    "hl_green":  "background: #d7f5e2; color: #1f7a44; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
+    "em_red":    "color: #d9534f; font-weight: 700;",
+    "em_blue":   "color: #4a6cf7; font-weight: 700;",
+    "em_orange": "color: #ff7f24; font-weight: 700;",
+}
+
+DEFAULT_SECTION_DIVIDER_TEXT = "◆  ◆  ◆"
+
+
+def _themes_dir():
+    return Path(__file__).parent.parent / "assets" / "themes"
+
+
+def list_themes():
+    """列出可用主题名称"""
+    d = _themes_dir()
+    if not d.exists():
+        return []
+    return sorted(p.stem for p in d.glob("*.json"))
+
+
+def load_theme(theme_name=None, style_path=None):
+    """
+    加载一个完整主题(styles + highlights + section_divider_text)。
+
+    参数优先级:
+      1. style_path(显式指定 JSON 文件)
+      2. theme_name(查 assets/themes/<name>.json)
+      3. 内置 DEFAULT_STYLES / DEFAULT_HIGHLIGHTS
+
+    返回:
+        (styles: dict, highlights: dict, divider_text: str)
+    """
+    styles = DEFAULT_STYLES.copy()
+    highlights = DEFAULT_HIGHLIGHTS.copy()
+    divider_text = DEFAULT_SECTION_DIVIDER_TEXT
+
+    candidates = []
+    if style_path:
+        candidates.append(Path(style_path))
+    if theme_name:
+        candidates.append(_themes_dir() / f"{theme_name}.json")
+
+    for path in candidates:
+        if path and path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                styles.update(data.get("styles", {}))
+                highlights.update(data.get("highlights", {}))
+                if data.get("section_divider_text"):
+                    divider_text = data["section_divider_text"]
+                break
+            except (json.JSONDecodeError, KeyError):
+                continue
+
+    return styles, highlights, divider_text
 
 
 def load_styles(style_path=None):
-    """加载样式配置，优先使用用户自定义样式"""
-    styles = DEFAULT_STYLES.copy()
-
-    if style_path is None:
-        style_path = Path(__file__).parent.parent / "assets" / "style_config.json"
-
-    if Path(style_path).exists():
-        try:
-            with open(style_path, "r", encoding="utf-8") as f:
-                custom = json.load(f)
-                styles.update(custom.get("styles", {}))
-        except (json.JSONDecodeError, KeyError):
-            pass
-
+    """向后兼容:老接口只返回 styles。"""
+    styles, _, _ = load_theme(style_path=style_path)
     return styles
 
 
@@ -85,32 +148,52 @@ def load_styles(style_path=None):
 # Markdown 解析与转换
 # ============================================================
 
-def convert_markdown_to_wechat_html(markdown_text, styles=None):
+# 行内扩展标记(有序,先处理长模式)
+INLINE_MARKS = [
+    # (正则, highlight_key)
+    (r'==([^=\n]+)==',  "hl_yellow"),
+    (r'\+\+([^+\n]+)\+\+', "hl_blue"),
+    (r'%%([^%\n]+)%%',  "hl_pink"),
+    (r'&&([^&\n]+)&&',  "hl_green"),
+    (r'!!([^!\n]+)!!',  "em_red"),
+    (r'@@([^@\n]+)@@',  "em_blue"),
+    (r'\^\^([^\^\n]+)\^\^', "em_orange"),
+]
+
+
+def convert_markdown_to_wechat_html(markdown_text, styles=None, highlights=None, divider_text=None):
     """
     将 Markdown 文本转换为微信公众号兼容的 HTML。
 
     Args:
-        markdown_text: Markdown格式的文章内容
-        styles: 样式字典（可选，默认使用内置样式）
+        markdown_text: Markdown 格式的文章内容
+        styles: 标签样式字典(默认使用内置)
+        highlights: 行内标记样式字典(默认使用内置)
+        divider_text: 分节符文本
 
     Returns:
-        str: 微信兼容的HTML字符串
+        str: 微信兼容的 HTML 字符串
     """
     if styles is None:
-        styles = load_styles()
+        styles = DEFAULT_STYLES.copy()
+    if highlights is None:
+        highlights = DEFAULT_HIGHLIGHTS.copy()
+    if divider_text is None:
+        divider_text = DEFAULT_SECTION_DIVIDER_TEXT
 
     lines = markdown_text.split("\n")
     html_parts = []
     in_code_block = False
     code_block_content = []
     in_list = False
-    list_type = None  # "ul" or "ol"
+    list_type = None
     list_items = []
     in_blockquote = False
     blockquote_lines = []
     in_table = False
     table_rows = []
-    h1_seen = False  # 跟踪是否已遇到第一个H1标题
+    h1_seen = False
+    prev_was_h2 = False
 
     def flush_list():
         nonlocal in_list, list_items, list_type
@@ -149,7 +232,7 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
                     cells_html = "".join(f'<th style="{styles["th"]}">{c}</th>' for c in cells)
                     rows_html.append(f"<tr>{cells_html}</tr>")
                 elif all(set(c.strip()) <= {"-", ":"} for c in cells):
-                    continue  # 跳过分隔行
+                    continue
                 else:
                     cells_html = "".join(f'<td style="{styles["td"]}">{c}</td>' for c in cells)
                     rows_html.append(f"<tr>{cells_html}</tr>")
@@ -158,41 +241,72 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
             in_table = False
 
     def _escape_html(text):
-        """转义HTML特殊字符，防止代码内容被浏览器解析"""
         return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def process_inline(text):
-        """处理行内Markdown语法"""
-        # 图片 ![alt](url)
-        text = re.sub(
-            r'!\[([^\]]*)\]\(([^)]+)\)',
-            lambda m: f'<img src="{m.group(2)}" alt="{m.group(1)}" style="{styles["img"]}"/>',
-            text
-        )
-        # 链接 [text](url)
-        text = re.sub(
-            r'\[([^\]]+)\]\(([^)]+)\)',
-            lambda m: f'<a href="{m.group(2)}" style="{styles["a"]}">{m.group(1)}</a>',
-            text
-        )
-        # 行内代码 `code`
+        """处理行内 Markdown 语法 + 扩展标记。
+
+        安全处理:
+        - 先转义 <,> 以阻止原始 HTML/JS (<script> 之类)透传
+          (& 不在这一步转义,因为自定义标记 &&...&& 会被破坏;
+          所有由我们自己生成的 style 属性都不含原始 &,所以无需
+          整体转义,只在最后把游离的 & 转成 &amp;)
+        - 链接 [text](url) 的 url 若以 javascript: / data: / vbscript: 开头
+          (忽略大小写和前导空白),直接退化为纯文本
+        - 图片 ![alt](url) 的 alt/url 经 html.escape(quote=True) 处理
+        """
+        # 1. 先把原始 <,> 转义掉 ── 禁止 <script> 透传
+        text = text.replace("<", "&lt;").replace(">", "&gt;")
+
+        # 2. 图片 ![alt](url) —— alt/url 完整转义,防止属性注入
+        def _img_sub(m):
+            alt = html.escape(m.group(1), quote=True)
+            src = html.escape(m.group(2), quote=True)
+            return f'<img src="{src}" alt="{alt}" style="{styles["img"]}"/>'
+        text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', _img_sub, text)
+
+        # 3. 链接 [text](url) —— 拒绝危险协议
+        _DANGEROUS_URL = re.compile(r'^\s*(javascript|data|vbscript)\s*:', re.IGNORECASE)
+        def _link_sub(m):
+            link_text = m.group(1)
+            url = m.group(2).strip()
+            if _DANGEROUS_URL.match(url):
+                # 不生成 <a>,仅保留纯文本
+                return link_text
+            safe_url = html.escape(url, quote=True)
+            return f'<a href="{safe_url}" style="{styles["a"]}">{link_text}</a>'
+        text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', _link_sub, text)
+
+        # 4. 行内代码 `code`
         text = re.sub(
             r'`([^`]+)`',
             lambda m: f'<code style="{styles["code_inline"]}">{_escape_html(m.group(1))}</code>',
-            text
+            text,
         )
-        # 粗体 **text**
+        # 5. 扩展行内标记(==/++/%%/&&/!!/@@/^^)—— 要在 ** 之前处理
+        for pattern, key in INLINE_MARKS:
+            style_str = highlights.get(key, "")
+            if not style_str:
+                continue
+            text = re.sub(
+                pattern,
+                lambda m, s=style_str: f'<span style="{s}">{m.group(1)}</span>',
+                text,
+            )
+        # 6. 粗体 **text**
         text = re.sub(
-            r'\*\*([^*]+)\*\*',
+            r'\*\*([^*\n]+)\*\*',
             lambda m: f'<strong style="{styles["strong"]}">{m.group(1)}</strong>',
-            text
+            text,
         )
-        # 斜体 *text*
+        # 7. 斜体 *text*
         text = re.sub(
-            r'\*([^*]+)\*',
+            r'(?<!\*)\*([^*\n]+)\*(?!\*)',
             lambda m: f'<em style="{styles["em"]}">{m.group(1)}</em>',
-            text
+            text,
         )
+        # 8. 收尾:把游离的 & 转成 &amp;(不影响已生成的 &lt;/&gt;/&amp;/&#...)
+        text = re.sub(r'&(?!(?:[a-zA-Z][a-zA-Z0-9]{1,31}|#[0-9]{1,7}|#x[0-9a-fA-F]{1,6});)', '&amp;', text)
         return text
 
     for line in lines:
@@ -210,6 +324,7 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
                 flush_blockquote()
                 flush_table()
                 in_code_block = True
+            prev_was_h2 = False
             continue
 
         if in_code_block:
@@ -223,6 +338,7 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
             if not in_table:
                 in_table = True
             table_rows.append(stripped)
+            prev_was_h2 = False
             continue
         else:
             flush_table()
@@ -234,9 +350,19 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
                 in_blockquote = True
             content = stripped.lstrip(">").strip()
             blockquote_lines.append(process_inline(content))
+            prev_was_h2 = False
             continue
         else:
             flush_blockquote()
+
+        # 自定义分节符: 单独一行的 `===` 或 `~~~` (与代码块 ``` 区分)
+        if re.match(r'^(={3,}|~{3,})$', stripped):
+            flush_list()
+            html_parts.append(
+                f'<p style="{styles.get("section_divider", "")}">{divider_text}</p>'
+            )
+            prev_was_h2 = False
+            continue
 
         # 标题
         h_match = re.match(r'^(#{1,3})\s+(.+)$', stripped)
@@ -245,17 +371,24 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
             level = len(h_match.group(1))
             text = process_inline(h_match.group(2))
             tag = f"h{level}"
-            # 跳过第一个H1标题（微信已在文章顶部显示标题，正文中重复会冗余）
             if level == 1 and not h1_seen:
                 h1_seen = True
+                prev_was_h2 = False
                 continue
+            # 如果两个 h2 之间已经有正文,在下一个 h2 前插一个分节符
+            if level == 2 and html_parts and not prev_was_h2:
+                html_parts.append(
+                    f'<p style="{styles.get("section_divider", "")}">{divider_text}</p>'
+                )
             html_parts.append(f'<{tag} style="{styles[tag]}">{text}</{tag}>')
+            prev_was_h2 = (level == 2)
             continue
 
         # 分割线
         if re.match(r'^(-{3,}|\*{3,}|_{3,})$', stripped):
             flush_list()
             html_parts.append(f'<hr style="{styles["hr"]}"/>')
+            prev_was_h2 = False
             continue
 
         # 无序列表
@@ -266,6 +399,7 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
                 in_list = True
                 list_type = "ul"
             list_items.append(process_inline(ul_match.group(1)))
+            prev_was_h2 = False
             continue
 
         # 有序列表
@@ -276,32 +410,47 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None):
                 in_list = True
                 list_type = "ol"
             list_items.append(process_inline(ol_match.group(1)))
+            prev_was_h2 = False
             continue
 
         flush_list()
 
-        # 空行
         if not stripped:
             continue
 
-        # 纯图片行
+        # 纯图片行 —— alt/src 必须转义,避免 "><script> 这种属性注入
         img_match = re.match(r'^!\[([^\]]*)\]\(([^)]+)\)$', stripped)
         if img_match:
-            alt = img_match.group(1)
-            src = img_match.group(2)
+            alt_raw = img_match.group(1)
+            src_raw = img_match.group(2)
+            alt = html.escape(alt_raw, quote=True)
+            src = html.escape(src_raw, quote=True)
             html_parts.append(f'<p style="text-align:center;margin:16px 0;"><img src="{src}" alt="{alt}" style="{styles["img"]}"/></p>')
-            if alt:
+            if alt_raw:
                 html_parts.append(f'<p style="{styles["caption"]}">{alt}</p>')
+            prev_was_h2 = False
             continue
 
         # 普通段落
         text = process_inline(stripped)
         html_parts.append(f'<p style="{styles["p"]}">{text}</p>')
+        prev_was_h2 = False
 
-    # 清理未关闭的块
     flush_list()
     flush_blockquote()
     flush_table()
+
+    # #23: 未闭合的代码块 —— 尽力把已积累的内容按代码块渲染,避免默默丢失内容
+    if in_code_block and code_block_content:
+        print("警告: 未闭合的 code block,已按代码块渲染", file=sys.stderr)
+        code_html = "\n".join(code_block_content)
+        html_parts.append(f'<pre style="{styles["code_block"]}">{code_html}</pre>')
+        code_block_content = []
+        in_code_block = False
+    elif in_code_block:
+        # 代码块开了但一行内容都没有 —— 也提醒一下
+        print("警告: 未闭合的 code block,已按代码块渲染", file=sys.stderr)
+        in_code_block = False
 
     body = "\n".join(html_parts)
     return f'<section style="{styles["body"]}">\n{body}\n</section>'
@@ -315,21 +464,34 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Markdown → 微信公众号 HTML 转换器")
-    parser.add_argument("input", help="Markdown文件路径")
-    parser.add_argument("-o", "--output", help="输出HTML文件路径（默认输出到stdout）")
-    parser.add_argument("--style", help="自定义样式JSON文件路径")
+    parser.add_argument("input", help="Markdown 文件路径")
+    parser.add_argument("-o", "--output", help="输出 HTML 文件路径(默认 stdout)")
+    parser.add_argument("--theme", help=f"主题名,可选: {', '.join(list_themes()) or '无'}")
+    parser.add_argument("--style", help="自定义样式 JSON 文件路径(覆盖 --theme)")
+    parser.add_argument("--list-themes", action="store_true", help="列出所有可用主题")
 
     args = parser.parse_args()
+
+    if args.list_themes:
+        themes = list_themes()
+        if not themes:
+            print("未找到主题(assets/themes/ 为空)")
+        else:
+            for t in themes:
+                print(t)
+        sys.exit(0)
 
     with open(args.input, "r", encoding="utf-8") as f:
         md_text = f.read()
 
-    styles = load_styles(args.style) if args.style else load_styles()
-    html = convert_markdown_to_wechat_html(md_text, styles)
+    styles, highlights, divider_text = load_theme(
+        theme_name=args.theme, style_path=args.style
+    )
+    html = convert_markdown_to_wechat_html(md_text, styles, highlights, divider_text)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(html)
-        print(f"转换完成：{args.output}")
+        print(f"转换完成: {args.output}")
     else:
         print(html)

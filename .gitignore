@@ -8,7 +8,9 @@ build/
 # Environment & Credentials
 .env
 .env.local
+.env.backup
 accounts.yaml
+scripts/.token_cache*
 scripts/.token_cache*.json
 
 # Temp files
@@ -23,10 +25,11 @@ Thumbs.db
 article.md
 article.html
 article_preview.html
+generated/
 
-# IDE
+# IDE / Harness state
 .vscode/
 .idea/
 .gstack/
 .omc/
-.omx
+.omx/
