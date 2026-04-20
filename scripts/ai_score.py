@@ -32,6 +32,10 @@ import argparse
 import statistics
 from pathlib import Path
 
+# 默认失败阈值：总分 >= 该值视为"AI 味过重"。
+# check_ai_score()、CLI --threshold 默认值和 publish.py 均应引用此常量，保持一致。
+DEFAULT_THRESHOLD: float = 45.0
+
 
 # ---------- 黑名单 ----------
 
@@ -210,16 +214,6 @@ def score_structural_perfection(text: str) -> tuple:
     return round(float(ai), 1), {"hit_count": hits}
 
 
-def score_punctuation(text: str) -> dict:
-    """标点单调度的库式接口 —— 返回 dict({"score": ..., "detail": ...})。
-
-    仅是 score_punctuation_flatness 的 dict 封装,便于外部代码直接读取
-    r['score'] 而不用拆元组。
-    """
-    score, detail = score_punctuation_flatness(text)
-    return {"score": score, "detail": detail}
-
-
 def score_punctuation_flatness(text: str) -> tuple:
     """检测标点单调度(真人会用破折号、问号、省略号、感叹号)。"""
     chars = len(text)
@@ -298,7 +292,7 @@ def analyze(md_text: str) -> dict:
     }
 
 
-def check_ai_score(md_content: str, threshold: float = 45.0) -> tuple:
+def check_ai_score(md_content: str, threshold: float = DEFAULT_THRESHOLD) -> tuple:
     """
     库入口:对 md 内容做 AI 味检测。
 
@@ -375,8 +369,8 @@ def main():
     parser.add_argument(
         "--threshold",
         type=float,
-        default=50.0,
-        help="失败阈值(默认 50)。总分 >= 阈值则 exit 1",
+        default=DEFAULT_THRESHOLD,
+        help=f"失败阈值(默认 {DEFAULT_THRESHOLD})。总分 >= 阈值则 exit 1",
     )
     args = parser.parse_args()
 

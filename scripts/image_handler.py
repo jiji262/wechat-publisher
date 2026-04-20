@@ -336,7 +336,7 @@ def extract_images_from_html(html_content):
 # 完整图片处理流程
 # ============================================================
 
-def process_article_images(md_content, temp_dir="/tmp/wechat_images"):
+def process_article_images(md_content, temp_dir=None):
     """
     完整的文章图片处理流程：
     1. 提取Markdown中的所有图片引用
@@ -349,11 +349,15 @@ def process_article_images(md_content, temp_dir="/tmp/wechat_images"):
 
     Args:
         md_content: Markdown文章内容
-        temp_dir: 临时图片目录(同时用于存放 .uploaded_manifest.json)
+        temp_dir: 临时图片目录(同时用于存放 .uploaded_manifest.json)。
+                  None(默认)时自动创建 mkdtemp 隔离目录，避免并发冲突。
 
     Returns:
         tuple: (处理后的Markdown, 图片映射字典, 第一张图片的本地路径)
     """
+    if temp_dir is None:
+        import tempfile
+        temp_dir = tempfile.mkdtemp(prefix="wechat_images_")
     temp_dir = Path(temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -419,8 +423,9 @@ def process_article_images(md_content, temp_dir="/tmp/wechat_images"):
                 mapping[url] = wechat_url
     else:
         # 并行路径。ThreadPoolExecutor 在 GIL 下对 IO-bound 上传足够。
-        # manifest 是 dict,CPython 的 dict 写入是线程安全(atomic)的,
-        # 同一图片出现两次的罕见情况下可能多传一次,但结果仍一致。
+        # manifest 写入在 futures 收集后串行执行(各 future 只更新 mapping),
+        # 最终由 save_manifest 一次性落盘,不存在并发写竞争。
+        # 同一 digest 若并发命中未缓存路径,最多多传一次,结果 URL 等价,可接受。
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = [
                 pool.submit(_do_upload, idx, url, local_path)
@@ -455,7 +460,7 @@ if __name__ == "__main__":
     # download 命令
     sub_dl = subparsers.add_parser("download", help="下载图片")
     sub_dl.add_argument("url", help="图片URL")
-    sub_dl.add_argument("-d", "--dir", default="/tmp/wechat_images", help="保存目录")
+    sub_dl.add_argument("-d", "--dir", default=None, help="保存目录(默认 mkdtemp 自动创建)")
 
     # upload 命令
     sub_up = subparsers.add_parser("upload", help="上传图片到微信")

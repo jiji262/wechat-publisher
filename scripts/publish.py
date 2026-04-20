@@ -173,7 +173,7 @@ def publish_from_markdown(
     theme=None,
     sync_platforms=None,
     account_name: Optional[str] = None,
-    ai_score_threshold: float = 45.0,
+    ai_score_threshold: float = None,  # None → use ai_score.DEFAULT_THRESHOLD
     skip_ai_score: bool = False,
     debug: bool = False,
 ):
@@ -233,16 +233,18 @@ def publish_from_markdown(
     if not skip_ai_score:
         # 延迟导入,避免其他 agent 正在写 ai_score.py 时触发 import 错误
         try:
-            from ai_score import check_ai_score
+            from ai_score import check_ai_score, DEFAULT_THRESHOLD as _DEFAULT_THRESHOLD
         except ImportError as exc:
             print(f"\n[警告] 无法加载 ai_score 模块({exc}),跳过 AI 味检测。")
         else:
+            # 使用 ai_score.DEFAULT_THRESHOLD 作为默认值，保证 CLI 与库行为一致
+            _threshold = ai_score_threshold if ai_score_threshold is not None else _DEFAULT_THRESHOLD
             print("\n[预检] AI 味检测...")
-            passed, report = check_ai_score(md_content, ai_score_threshold)
+            passed, report = check_ai_score(md_content, _threshold)
             total = report.get("total_score")
-            print(f"  总分: {total} / 100  (阈值 {ai_score_threshold})")
+            print(f"  总分: {total} / 100  (阈值 {_threshold})")
             if not passed:
-                print(f"  结果: 未通过 AI 味检测(总分 {total} >= 阈值 {ai_score_threshold})")
+                print(f"  结果: 未通过 AI 味检测(总分 {total} >= 阈值 {_threshold})")
                 dims = report.get("dimensions", {}) or {}
                 if dims:
                     print("  失分维度:")
@@ -472,8 +474,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--ai-score-threshold",
         type=float,
-        default=45.0,
-        help="AI 味检测阈值(默认 45.0)。总分 >= 阈值则阻止发布",
+        default=None,
+        help="AI 味检测阈值(默认与 ai_score.DEFAULT_THRESHOLD 一致)。总分 >= 阈值则阻止发布",
     )
     parser.add_argument(
         "--skip-ai-score",

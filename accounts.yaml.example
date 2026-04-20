@@ -11,8 +11,14 @@ accounts:
     app_id: "wx1234567890abcdef"
     app_secret: "your_app_secret_here"
     author: "飞哥"
+    # 可选:HTML 主题。可选值: clean-modern(默认) | minimal-mono | warm-editorial
+    # theme: "clean-modern"
+    # 可选:文章作者简介(部分平台显示在文末)
+    # voice: |
+    #   飞哥，独立开发者，专注 AI 与效率工具。
+    #   微信公众号：某某号。
     # 可选:发到微信后用 --sync-from-config 可自动同步到这些平台
-    # 依赖 @wechatsync/cli + Chrome 扩展,详见 SKILL.md 阶段七
+    # 依赖 @wechatsync/cli + Chrome 扩展，详见 SKILL.md 阶段七
     # sync_platforms: [zhihu, juejin, csdn]
 
   tech:
@@ -20,6 +26,9 @@ accounts:
     app_id: "wx0987654321fedcba"
     app_secret: "another_app_secret"
     author: "技术团队"
+    # theme: "minimal-mono"
+    # voice: |
+    #   技术团队，持续输出工程实践。
     # sync_platforms: [juejin, csdn, segmentfault]
 
   company:
@@ -27,3 +36,4 @@ accounts:
     app_id: "wxabcdef1234567890"
     app_secret: "company_app_secret"
     author: "官方"
+    # theme: "warm-editorial"
