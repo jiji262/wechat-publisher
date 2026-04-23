@@ -265,7 +265,7 @@ python3 scripts/ai_score.py article.md --threshold 45
 | 列表 | 自定义样式数字标号 + `min-height` 防塌 |
 | 粗体强调 | 深藏青 + 渐变黄色下划线 |
 
-打开 `generated/Theme Showcase.html` 可并排预览全部 6 套主题。
+打开 `assets/theme-previews/index.html` 可并排预览全部 6 套主题。
 
 ### 自定义配色
 

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WeChat Publisher · 主题预览对比(6 套)</title>
+<style>
+  :root {
+    --ink: #0b1022;
+    --muted: #6a7187;
+    --surface: #f7f8fb;
+    --border: #e4e8f2;
+    --accent: #2e5bff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--surface); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  header {
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 56px 40px 24px;
+  }
+  header .eyebrow {
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  header h1 {
+    font-size: 40px;
+    font-weight: 800;
+    margin: 8px 0 6px;
+    letter-spacing: -0.5px;
+  }
+  header p {
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 780px;
+    line-height: 1.7;
+    margin: 6px 0 0;
+  }
+  header .meta {
+    display: inline-flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 22px;
+  }
+  header .meta .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+  }
+  header .meta .pill b { font-weight: 700; }
+  .legend {
+    max-width: 1680px;
+    margin: 12px auto 0;
+    padding: 0 40px;
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  main {
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 28px 40px 80px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 28px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(11,16,34,0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 50px rgba(11,16,34,0.10);
+  }
+  .card .head {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .card .head .name {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+  .card .head .swatches {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .card .head .swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  .card .head .tag {
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .card .head .tag.new { background: #eef2ff; border-color: #c7d2fe; color: #2e5bff; }
+  .card .head .tag.default { background: #fff5e0; border-color: #ffd78a; color: #a86600; }
+  .card .head .tag.fresh { background: #fff0e6; border-color: #ffd4be; color: #c43a1a; }
+  .card .head .tag.sage { background: #e8ede3; border-color: #b8c5bb; color: #3a4f3f; }
+  .card .desc {
+    padding: 10px 20px 0;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.65;
+    min-height: 56px;
+  }
+  .card .use {
+    padding: 6px 20px 16px;
+    font-size: 11.5px;
+    color: #3a4463;
+    letter-spacing: 0.3px;
+  }
+  .card .use b { font-weight: 700; color: var(--ink); }
+  .phone {
+    position: relative;
+    margin: 0 18px 18px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+  }
+  .phone .notch {
+    height: 28px;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+  }
+  .phone .notch .right { display: flex; gap: 4px; align-items: center; }
+  .phone .notch .dot { width: 4px; height: 4px; background: #fff; border-radius: 50%; }
+  .phone iframe {
+    width: 100%;
+    height: 560px;
+    border: none;
+    display: block;
+    background: #fff;
+  }
+  .card .cli {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    background: #fafbfd;
+    user-select: all;
+    word-break: break-all;
+  }
+  .card .cli b { color: var(--ink); font-weight: 700; }
+  .divider {
+    max-width: 1680px;
+    margin: 40px auto 0;
+    padding: 0 40px;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  footer {
+    max-width: 1680px;
+    margin: 60px auto 0;
+    padding: 0 40px 40px;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  footer code { background: #eef2ff; color: #2e3a8a; padding: 1px 6px; border-radius: 3px; font-size: 11.5px; }
+  @media (max-width: 720px) {
+    header { padding: 28px 20px 16px; }
+    header h1 { font-size: 26px; }
+    main { padding: 16px 20px 48px; }
+    .legend { padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">WECHAT PUBLISHER · THEMES</div>
+  <h1>6 套主题预览对比</h1>
+  <p>每个主题对应微信公众号排版的一种人格。相同的文章内容在不同主题下会呈现完全不同的气质——选对主题比多写一段话更重要。</p>
+  <div class="meta">
+    <span class="pill"><b>6</b> 套主题</span>
+    <span class="pill"><b>main</b> 默认 refined-blue</span>
+    <span class="pill"><b>tech</b> 默认 minimal-mono</span>
+    <span class="pill">内联样式 · 零 class · 微信兼容</span>
+  </div>
+</header>
+
+<div class="legend">
+  <span>说明:</span>
+  <span>· 手机预览宽度约 375px,接近微信公众号真实阅读宽度</span>
+  <span>· 底部命令可直接复制使用</span>
+</div>
+
+<main>
+  <div class="grid">
+
+    <!-- 1. refined-blue (main default) -->
+    <article class="card">
+      <div class="head">
+        <div>
+          <div class="name">refined-blue</div>
+          <div class="swatches">
+            <span class="swatch" style="background:#2e5bff"></span>
+            <span class="swatch" style="background:#0b1530"></span>
+            <span class="swatch" style="background:#eef2ff"></span>
+            <span class="swatch" style="background:#fff18a"></span>
+          </div>
+        </div>
+        <span class="tag default">main 默认</span>
+      </div>
+      <div class="desc">精致蓝调,现代科技感。更紧的层次、数字标号、渐变下划线高亮,<strong style="color:#0b1530">防空列表项塌陷</strong>。</div>
+      <div class="use"><b>适合:</b>AI · 产品 · 深度分析 · 长内容</div>
+      <div class="phone">
+        <div class="notch"><span>09:29</span><span class="right"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+        <iframe src="refined-blue.html" loading="lazy"></iframe>
+      </div>
+      <div class="cli">--theme <b>refined-blue</b></div>
+    </article>
+
+    <!-- 2. minimal-mono (tech default) -->
+    <article class="card">
+      <div class="head">
+        <div>
+          <div class="name">minimal-mono</div>
+          <div class="swatches">
+            <span class="swatch" style="background:#000000"></span>
+            <span class="swatch" style="background:#1a1a1a"></span>
+            <span class="swatch" style="background:#f5f5f5"></span>
+            <span class="swatch" style="background:#ffffff; border-color: #ccc;"></span>
+          </div>
+        </div>
+        <span class="tag default">tech 默认</span>
+      </div>
+      <div class="desc">黑白极简,工程师风。只用粗细 / 留白 / 对齐做层级,完全无装饰色。</div>
+      <div class="use"><b>适合:</b>技术 · SDK / CLI · 源码拆解 · 工程实践</div>
+      <div class="phone">
+        <div class="notch"><span>09:29</span><span class="right"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+        <iframe src="minimal-mono.html" loading="lazy"></iframe>
+      </div>
+      <div class="cli">--theme <b>minimal-mono</b></div>
+    </article>
+
+    <!-- 3. warm-editorial -->
+    <article class="card">
+      <div class="head">
+        <div>
+          <div class="name">warm-editorial</div>
+          <div class="swatches">
+            <span class="swatch" style="background:#5a2f1a"></span>
+            <span class="swatch" style="background:#c9a27d"></span>
+            <span class="swatch" style="background:#fbf7f0"></span>
+            <span class="swatch" style="background:#f4ead8"></span>
+          </div>
+        </div>
+        <span class="tag">可选</span>
+      </div>
+      <div class="desc">栗色暖调,衬线杂志风。衬线字体打底,米白背景,像一本纸质小书。</div>
+      <div class="use"><b>适合:</b>观点 · 随笔 · 行业评论 · 长文</div>
+      <div class="phone">
+        <div class="notch"><span>09:29</span><span class="right"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+        <iframe src="warm-editorial.html" loading="lazy"></iframe>
+      </div>
+      <div class="cli">--theme <b>warm-editorial</b></div>
+    </article>
+
+    <!-- 4. elegant-ink -->
+    <article class="card">
+      <div class="head">
+        <div>
+          <div class="name">elegant-ink</div>
+          <div class="swatches">
+            <span class="swatch" style="background:#1a1a1a"></span>
+            <span class="swatch" style="background:#6a2828"></span>
+            <span class="swatch" style="background:#fafaf7"></span>
+            <span class="swatch" style="background:#f2efe8"></span>
+          </div>
+        </div>
+        <span class="tag">可选</span>
+      </div>
+      <div class="desc">水墨雅韵,墨黑 + 朱砂红。宋体打底,中式留白,编号用一二三四,沉静克制。</div>
+      <div class="use"><b>适合:</b>人文 · 观点 · 文化 · 哲思长文</div>
+      <div class="phone">
+        <div class="notch"><span>09:29</span><span class="right"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+        <iframe src="elegant-ink.html" loading="lazy"></iframe>
+      </div>
+      <div class="cli">--theme <b>elegant-ink</b></div>
+    </article>
+
+    <!-- 5. sunset-coral (NEW) -->
+    <article class="card">
+      <div class="head">
+        <div>
+          <div class="name">sunset-coral</div>
+          <div class="swatches">
+            <span class="swatch" style="background:#ff6b4a"></span>
+            <span class="swatch" style="background:#c43a1a"></span>
+            <span class="swatch" style="background:#fffaf5"></span>
+            <span class="swatch" style="background:#ffdbaa"></span>
+          </div>
+        </div>
+        <span class="tag fresh">NEW</span>
+      </div>
+      <div class="desc">夕阳珊瑚,暖橙 + 奶白。热烈克制的活力色,粗体黄橙下划线,数字标号用橘红。</div>
+      <div class="use"><b>适合:</b>热点 · 榜单 · 潮流 · 轻快话题</div>
+      <div class="phone">
+        <div class="notch"><span>09:29</span><span class="right"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+        <iframe src="sunset-coral.html" loading="lazy"></iframe>
+      </div>
+      <div class="cli">--theme <b>sunset-coral</b></div>
+    </article>
+
+    <!-- 6. sage-premium (NEW) -->
+    <article class="card">
+      <div class="head">
+        <div>
+          <div class="name">sage-premium</div>
+          <div class="swatches">
+            <span class="swatch" style="background:#1e2a21"></span>
+            <span class="swatch" style="background:#5c7a65"></span>
+            <span class="swatch" style="background:#f7f5ee"></span>
+            <span class="swatch" style="background:#d4deaa"></span>
+          </div>
+        </div>
+        <span class="tag sage">NEW</span>
+      </div>
+      <div class="desc">鼠尾草墨绿,深绿 + 象牙白。克制专业的自然色,衬线引用块,橄榄黄下划高亮。</div>
+      <div class="use"><b>适合:</b>数据分析 · 研究报告 · 长篇深度</div>
+      <div class="phone">
+        <div class="notch"><span>09:29</span><span class="right"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+        <iframe src="sage-premium.html" loading="lazy"></iframe>
+      </div>
+      <div class="cli">--theme <b>sage-premium</b></div>
+    </article>
+
+  </div>
+
+  <div class="divider">How to use</div>
+</main>
+
+<footer>
+  <p><b style="color:var(--ink);">命令行选择主题:</b></p>
+  <p><code>python3 scripts/html_converter.py article.md --theme refined-blue -o article.html</code></p>
+  <p><b style="color:var(--ink);">列出全部主题:</b></p>
+  <p><code>python3 scripts/html_converter.py article.md --list-themes</code></p>
+  <p><b style="color:var(--ink);">在 accounts.yaml 中绑定账号默认主题:</b></p>
+  <p><code>theme: refined-blue</code> · 随后 <code>publish.py --account main</code> 自动使用该主题。</p>
+  <p><b style="color:var(--ink);">当前默认绑定:</b> main → refined-blue · tech → minimal-mono。其余 4 套为可选,写作时按内容类型选择。</p>
+</footer>
+</body>
+</html>

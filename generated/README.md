@@ -6,7 +6,6 @@
 
 - `article.html` / `article_preview.html` —— `html_converter.py` 的 HTML 输出
 - `<slug>/` —— 单篇文章的配图 / 封面 / 中间产物
-- `Theme Showcase.html` + `_theme_*.html` —— 主题预览对比页(`assets/themes/` 每套主题的渲染示例)
 - 其它临时导出
 
 ## 为什么 gitignore
@@ -19,11 +18,4 @@
 
 - 需要归档的成稿请提到仓库外(例如 `mp-articles/<main|tech>/<slug>/`)
 - 需要作为 skill / 文档一部分的静态资源请放到 `assets/` 或 `references/`
-- 仅 `generated/README.md` 例外保留在 git 中
-
-## 重新生成主题预览
-
-```bash
-python3 scripts/html_converter.py generated/_theme_sample.md --theme refined-blue -o generated/_theme_refined-blue.html
-# 或者参考 Theme Showcase.html 里记录的命令批量重跑
-```
+- 主题对比预览已入库,见 [`assets/theme-previews/`](../assets/theme-previews/)(本目录只有 `README.md` 例外保留)

@@ -324,7 +324,7 @@ python3 scripts/html_converter.py article.md --list-themes
 python3 scripts/html_converter.py article.md --theme refined-blue -o preview.html
 ```
 
-对比全部主题的可视化预览:打开 `generated/Theme Showcase.html`(或在 Launch preview panel 直接查看),6 套主题用同一篇文章渲染在手机宽度 frame 里并排对比。
+对比全部主题的可视化预览:打开 `assets/theme-previews/index.html`,6 套主题用同一篇文章渲染在手机宽度 frame 里并排对比。
 
 #### 主题说明
 
