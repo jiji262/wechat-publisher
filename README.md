@@ -4,6 +4,25 @@
 
 可作为 [Claude Code](https://claude.ai/code)、Codex、OpenClaw 的 Skill 使用,也可以独立命令行调用。
 
+## 安装
+
+作为 Claude Code / Cursor / Copilot Skill 使用(通过 [skills.sh](https://skills.sh) 注册):
+
+```bash
+npx skills add jiji262/wechat-publisher
+```
+
+或手动放入 `~/.claude/skills/`:
+
+```bash
+git clone https://github.com/jiji262/wechat-publisher.git ~/.claude/skills/wechat-publisher
+cp ~/.claude/skills/wechat-publisher/accounts.yaml.example ~/.claude/skills/wechat-publisher/accounts.yaml
+# 编辑 accounts.yaml 填入微信公众号 AppID / AppSecret
+pip install requests pyyaml
+```
+
+首次用调 `python3 scripts/wechat_api.py list-accounts` 确认账号配置 OK,再跑 `python3 -c "from wechat_api import get_access_token; print(get_access_token()[:10])"` 验证 API 连通。遇到 `40164` 报错就把 `curl ifconfig.me` 拿到的公网 IP 去[公众平台](https://mp.weixin.qq.com)后台加白名单。
+
 ## 功能特性
 
 - **全网素材搜索**:围绕话题自动多轮搜索,交叉验证数据,筛选最新案例和权威观点
@@ -34,9 +53,15 @@ wechat-publisher/
 │   ├── html_converter.py       # Markdown → 微信 HTML(多主题 + 行内标色)
 │   ├── image_handler.py        # 图片下载 / 上传 / 替换
 │   ├── ai_score.py             # 反 AI 检测自检(publish.py 自动调用)
+│   ├── newspic_build.py        # 贴图(图片消息)模式:brief.md → card_plan.json
 │   └── multi_publish.py        # 可选:同步到知乎/掘金/CSDN(基于 @wechatsync/cli)
 ├── assets/
-│   └── themes/                 # 排版主题(6 套 .json)
+│   ├── themes/                 # 排版主题(6 套 .json)
+│   ├── theme-previews/         # 6 套主题的 HTML 预览(index.html 并排对比)
+│   └── image-styles/           # 9 套配图风格(.json + previews/*.webp)
+├── references/
+│   └── api_reference.md        # 微信公众平台 API 参考(节选)
+├── brief.md.example            # newspic 贴图模式 brief 模板
 ├── tests/                      # pytest 测试套件(不依赖真实微信凭证)
 └── references/
     └── api_reference.md        # 微信API接口文档
