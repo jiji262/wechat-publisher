@@ -39,7 +39,7 @@ _MIN_ACCOUNTS_YAML = textwrap.dedent(
         app_id: "wx_fake_main_app_id_0001"
         app_secret: "fake_main_secret"
         author: "飞哥"
-        theme: "clean-modern"
+        theme: "refined-blue"
         voice: "test-voice-main"
 
       tech:

@@ -11,8 +11,8 @@ accounts:
     app_id: "wx1234567890abcdef"
     app_secret: "your_app_secret_here"
     author: "飞哥"
-    # 可选:HTML 主题。可选值: clean-modern(默认) | minimal-mono | warm-editorial
-    # theme: "clean-modern"
+    # 可选:HTML 主题。可选值: refined-blue(默认) | minimal-mono | warm-editorial | elegant-ink | sunset-coral | sage-premium
+    # theme: "refined-blue"
     # 可选:文章作者简介(部分平台显示在文末)
     # voice: |
     #   飞哥，独立开发者，专注 AI 与效率工具。

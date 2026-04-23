@@ -18,7 +18,7 @@ from html_converter import convert_markdown_to_wechat_html, load_theme
 # Shared theme fixture — every test needs the three tuples from load_theme.
 @pytest.fixture(scope="module")
 def theme():
-    styles, highlights, divider = load_theme(theme_name="clean-modern")
+    styles, highlights, divider = load_theme(theme_name="refined-blue")
     return styles, highlights, divider
 
 

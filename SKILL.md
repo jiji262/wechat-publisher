@@ -25,10 +25,10 @@ description: |
 
 | key | 公众号名 | 作者 | 主题 | 人格(voice) |
 |---|---|---|---|---|
-| `main`(默认) | 刷屏AI | **飞哥** | `clean-modern` | 热情、类比、北京口语、爱讲踩坑经历。面向 AI 产品 / 提示工程 / Agent / 个人生产力 |
+| `main`(默认) | 刷屏AI | **飞哥** | `refined-blue` | 热情、类比、北京口语、爱讲踩坑经历。面向 AI 产品 / 提示工程 / Agent / 个人生产力 |
 | `tech` | 蒜是哪根葱 | **葱哥** | `minimal-mono` | 技术直男味、冷幽默、不用感叹号、爱命令行和 commit hash。面向工程实践 / SDK / CLI / 底层原理 |
 
-**默认作者**:不指定 `--account` 时用 `main`(飞哥)。使用 `--account tech` 时自动切到葱哥 + minimal-mono 主题。
+**默认作者**:不指定 `--account` 时用 `main`(飞哥 + refined-blue)。使用 `--account tech` 时自动切到葱哥 + minimal-mono 主题。
 
 写作时**必须按当前账号的 voice 字段改写语气**,不同账号写出来要有明显的风格差异 —— 这本身就是反 AI 检测的关键(平台会对每个号建立历史文风基线,突然风格统一化就是 AI 信号)。
 
@@ -76,7 +76,7 @@ pip install requests pyyaml --break-system-packages 2>/dev/null || pip install r
 
 2. **识别目标账号**:根据话题自动选账号(AI 产品类 → main,技术工程类 → tech),并加载对应 voice。也可由用户显式指定。
 
-3. **产出**:写入 `generated/<YYYY-MM-DD>-<slug>/brief.md`,包含话题、目标账号、3-5 个关键词、用户提供的真实细节清单。
+3. **产出**:写入 `/Users/crimson/codes/0.docs/mp-articles/<main|tech>/<YYYY-MM-DD>-<slug>/brief.md`,包含话题、目标账号、3-5 个关键词、用户提供的真实细节清单。
 
 ---
 
@@ -97,7 +97,7 @@ pip install requests pyyaml --break-system-packages 2>/dev/null || pip install r
 
 3. **信息筛选与交叉验证**:关键数据多源交叉,具体到数字 / 名字 / 时间 / 产品版本号。
 
-4. **产出**:`generated/<slug>/research.md`,每个素材标来源,区分"权威层"和"真人层"。
+4. **产出**:`/Users/crimson/codes/0.docs/mp-articles/<main|tech>/<slug>/research.md`,每个素材标来源,区分"权威层"和"真人层"。
 
 ---
 
@@ -314,23 +314,36 @@ python3 scripts/image_handler.py upload /path/to/generated_image.png
 
 ```bash
 python3 scripts/html_converter.py article_processed.md \
-  --theme <clean-modern|warm-editorial|minimal-mono> \
+  --theme <refined-blue|minimal-mono|warm-editorial|elegant-ink|sunset-coral|sage-premium> \
   -o article.html
 ```
 
 **主题一般不用手动指定** —— 后面 `publish.py` 会根据 `--account` 自动从 `accounts.yaml` 里读 theme 字段。但如果你想预览某个主题:
 ```bash
 python3 scripts/html_converter.py article.md --list-themes
-python3 scripts/html_converter.py article.md --theme warm-editorial -o preview.html
+python3 scripts/html_converter.py article.md --theme refined-blue -o preview.html
 ```
+
+对比全部主题的可视化预览:打开 `generated/Theme Showcase.html`(或在 Launch preview panel 直接查看),6 套主题用同一篇文章渲染在手机宽度 frame 里并排对比。
 
 #### 主题说明
 
-| 主题 | 视觉 | 默认绑定 |
-|---|---|---|
-| `clean-modern` | 蓝调极简,现代科技感 | main(飞哥 / 刷屏AI) |
-| `minimal-mono` | 黑白极简,工程师风 | tech(葱哥 / 蒜是哪根葱) |
-| `warm-editorial` | 栗色暖调,杂志风 | (可选,适合观点 / 随笔) |
+| 主题 | 视觉 | 适用场景 | 默认绑定 |
+|---|---|---|---|
+| `refined-blue` | 蓝调极简 + 精致层次 / 数字标号 / 渐变高亮 | AI / 产品 / 深度分析 | **main**(刷屏AI) |
+| `minimal-mono` | 黑白极简,工程师风 | 技术 / SDK / 源码拆解 | **tech**(蒜是哪根葱) |
+| `warm-editorial` | 栗色暖调,衬线杂志风 | 观点 / 随笔 / 行业评论 | (可选) |
+| `elegant-ink` | 水墨雅韵,墨黑 + 朱砂红,宋体 | 人文 / 文化 / 哲思长文 | (可选) |
+| `sunset-coral` | 夕阳珊瑚,暖橙 + 奶白 | 热点 / 榜单 / 潮流 / 轻快话题 | (可选) |
+| `sage-premium` | 鼠尾草墨绿,克制专业 | 数据分析 / 研究报告 / 长篇深度 | (可选) |
+
+**通过主题名选择**:在 `accounts.yaml` 里修改对应账号的 `theme:` 字段即可切换。例如把 main 账号换到 `sunset-coral`:
+
+```yaml
+accounts:
+  main:
+    theme: "sunset-coral"    # 默认 refined-blue
+```
 
 #### 行内标色系统
 
@@ -370,7 +383,7 @@ python3 scripts/publish.py ... --skip-ai-score
 写作时还是推荐显式跑一次 `ai_score.py` 看细节报告:
 
 ```bash
-python3 scripts/ai_score.py generated/<slug>/article.md --threshold 45
+python3 scripts/ai_score.py /Users/crimson/codes/0.docs/mp-articles/<main|tech>/<slug>/article.md --threshold 45
 ```
 
 输出示例:
@@ -417,8 +430,8 @@ python3 scripts/ai_score.py generated/<slug>/article.md --threshold 45
 ```bash
 python3 scripts/publish.py \
   --account <main|tech> \
-  --input generated/<slug>/article.md \
-  --cover generated/<slug>/cover.jpg \
+  --input /Users/crimson/codes/0.docs/mp-articles/<main|tech>/<slug>/article.md \
+  --cover /Users/crimson/codes/0.docs/mp-articles/<main|tech>/<slug>/cover.jpg \
   --title "文章标题" \
   --digest "120 字以内摘要"
 ```
@@ -473,8 +486,8 @@ python3 scripts/publish.py --account tech --html article.html --cover cover.jpg 
 **方式 A:命令行显式指定平台(最常用)**
 ```bash
 python3 scripts/publish.py --account main \
-  --input generated/<slug>/article.md \
-  --cover generated/<slug>/cover.jpg \
+  --input /Users/crimson/codes/0.docs/mp-articles/main/<slug>/article.md \
+  --cover /Users/crimson/codes/0.docs/mp-articles/main/<slug>/cover.jpg \
   --sync zhihu,juejin,csdn
 ```
 
@@ -503,7 +516,7 @@ python3 scripts/multi_publish.py --input x.md --platforms zhihu,juejin
 因此同步走的是**原始 markdown**(`article.md`),不是已处理过的版本。
 
 - 外部 URL 图片(HTTPS):wechatsync 自动转存到各平台,通常没问题
-- 本地路径图片(比如 `generated/<slug>/images/fig1.png`):wechatsync 的文档未明确是否支持
+- 本地路径图片(比如 `/Users/crimson/codes/0.docs/mp-articles/main/<slug>/images/fig1.png`):wechatsync 的文档未明确是否支持
   - `multi_publish.py` 会扫出并提示有多少张本地图
   - 如果目标平台发现图加载不出来,需要把本地图先传到公开图床(或任何无防盗链的 CDN)、改成 URL 后再跑同步
 
@@ -517,21 +530,36 @@ python3 scripts/multi_publish.py --input x.md --platforms zhihu,juejin
 
 ## 文件组织约定
 
-所有生成的文件放在:
+**重要:所有生成的文件必须直接放在项目目录内,不要放在 `~/.claude/` 下。**
+
+`~/.claude/` 是 Claude Code 的敏感目录,即使开了 bypass permissions,写入该目录也会弹确认框。直接写到项目路径可以避免这个问题,同时"工作目录"和"归档目录"合二为一,少一步搬运。
+
+所有生成的文件(包括中间产物和最终归档)都放在:
 ```
-generated/<YYYY-MM-DD>-<slug>/
+/Users/crimson/codes/0.docs/mp-articles/<main|tech>/<YYYY-MM-DD>-<slug>/
   ├── brief.md            # 阶段一的需求摘要
   ├── research.md         # 阶段二的搜索素材
-  ├── article.md          # 阶段三/3.5 的文章
+  ├── article.md          # 阶段三/3.5 的文章(最终发布源)
   ├── article.html        # 阶段五转换的 HTML(临时)
   ├── images/             # 所有生成的配图
   ├── cover.jpg           # 封面图
   └── ai_score.json       # 阶段 5.5 的检测报告
 ```
 
-**不要**把 `article.md` / `article.html` 写到 wechat-publisher 根目录(那些是临时产物,不应污染 skill 目录)。
+- `<main|tech>` 按目标账号选:`main` 账号 → `main/` 文件夹,`tech` 账号 → `tech/` 文件夹
+- `<YYYY-MM-DD>-<slug>` 格式:日期 + 短横线 + 语义化 slug(纯小写英文短横线分隔)
+- 各阶段的命令和路径都要相应调整,例如:
+  ```bash
+  python3 scripts/ai_score.py /Users/crimson/codes/0.docs/mp-articles/main/<slug>/article.md --threshold 45
+  python3 scripts/publish.py --account main \
+    --input /Users/crimson/codes/0.docs/mp-articles/main/<slug>/article.md \
+    --cover /Users/crimson/codes/0.docs/mp-articles/main/<slug>/cover.jpg \
+    --title "..."
+  ```
 
-同时,**每篇正式发布的文章**要按 MEMORY 约定备份到 `mp-articles/<main|tech>/<slug>/` 下。
+**历史遗留**:如果看到 `~/.claude/skills/wechat-publisher/generated/` 下还有老文件,可以整体 `mv` 到项目路径下对应的 `main/` 或 `tech/` 文件夹,然后清空 `generated/`。新文章不要再往 `generated/` 写。
+
+**不要**把 `article.md` / `article.html` 写到 wechat-publisher 根目录(那些是临时产物,不应污染 skill 目录)。
 
 ---
 

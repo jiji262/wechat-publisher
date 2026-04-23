@@ -24,7 +24,7 @@ def test_get_config_default_account(tmp_accounts_yaml):
     assert cfg["account_key"] == "main"
     assert cfg["app_id"] == "wx_fake_main_app_id_0001"
     assert cfg["author"] == "飞哥"
-    assert cfg["theme"] == "clean-modern"
+    assert cfg["theme"] == "refined-blue"
 
 
 def test_get_config_explicit_account(tmp_accounts_yaml):

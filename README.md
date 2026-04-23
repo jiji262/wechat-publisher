@@ -9,7 +9,7 @@
 - **全网素材搜索**:围绕话题自动多轮搜索,交叉验证数据,筛选最新案例和权威观点
 - **AI智能写作**:按照头部博主风格生成3000-5000字深度文章,反AI味写作规则,段落短小有呼吸感
 - **AI配图生成**:通过 `baoyu-danger-gemini-web` skill(或其他图片生成 skill)为每个章节生成风格统一的手绘信息图(6-10张/篇)
-- **微信排版转换**:Markdown → 微信兼容HTML,所有样式自动内联,支持 clean-modern / minimal-mono / warm-editorial 等多主题
+- **微信排版转换**:Markdown → 微信兼容HTML,所有样式自动内联,支持 refined-blue / minimal-mono / warm-editorial / elegant-ink / sunset-coral / sage-premium 六套主题
 - **图片CDN上传**:自动上传图片到微信服务器,获取 `mmbiz.qpic.cn` 链接并替换占位符
 - **一键发布草稿**:封面图、标题、摘要、作者全部自动填好,直达草稿箱
 - **反 AI 检测 gate**:`ai_score.py` 按 burstiness / 套话 / 词汇 / 结构 / 标点 5 维打分,publish.py 发布前自动拦截高分稿
@@ -36,7 +36,7 @@ wechat-publisher/
 │   ├── ai_score.py             # 反 AI 检测自检(publish.py 自动调用)
 │   └── multi_publish.py        # 可选:同步到知乎/掘金/CSDN(基于 @wechatsync/cli)
 ├── assets/
-│   └── themes/                 # 排版主题(clean-modern / minimal-mono / warm-editorial)
+│   └── themes/                 # 排版主题(6 套 .json)
 ├── tests/                      # pytest 测试套件(不依赖真实微信凭证)
 └── references/
     └── api_reference.md        # 微信API接口文档
@@ -218,7 +218,7 @@ python3 scripts/publish.py --account main --html article.html --cover cover.jpg 
 **只做格式转换(Markdown → 微信HTML)**:
 
 ```bash
-python3 scripts/html_converter.py article.md --theme clean-modern -o article.html
+python3 scripts/html_converter.py article.md --theme refined-blue -o article.html
 ```
 
 **只处理图片**:
@@ -241,25 +241,31 @@ python3 scripts/ai_score.py article.md --threshold 45
 
 ## 排版主题
 
-内置三套主题,位于 `assets/themes/*.json`:
+内置六套主题,位于 `assets/themes/*.json`:
 
-| 主题 | 视觉 | 典型账号 |
+| 主题 | 视觉 | 典型账号 / 场景 |
 |---|---|---|
-| `clean-modern` | 蓝调极简、现代科技感 | main(飞哥 / 刷屏AI) |
+| `refined-blue` | 蓝调极简 + 精致层次 / 数字标号 | main(飞哥 / 刷屏AI) |
 | `minimal-mono` | 黑白极简、工程师风 | tech(葱哥 / 蒜是哪根葱) |
-| `warm-editorial` | 栗色暖调、杂志风 | 观点 / 随笔 |
+| `warm-editorial` | 栗色暖调、衬线杂志风 | 观点 / 随笔 |
+| `elegant-ink` | 水墨雅韵、墨黑 + 朱砂红、宋体 | 人文 / 文化 / 哲思 |
+| `sunset-coral` | 夕阳珊瑚、暖橙 + 奶白 | 热点 / 榜单 / 潮流 |
+| `sage-premium` | 鼠尾草墨绿、克制专业 | 数据分析 / 研究报告 |
 
-`clean-modern` 默认样式亮点:
+`refined-blue` 默认样式亮点:
 
 | 元素 | 样式 |
 |------|------|
-| 主色调 | `#4a6cf7`(优雅蓝) |
-| 正文 | 15px / 1.8倍行高 / 0.6px字间距 |
-| 二级标题 | 蓝色左边框 + 淡蓝渐变背景 |
-| 引用块 | 浅灰蓝底 + 蓝色左边框 |
-| 代码块 | 深色 Catppuccin 主题 / 10px圆角 |
-| 图片 | 6px圆角 + 柔和阴影 |
-| 列表 | 蓝色实心圆点 |
+| 主色调 | `#2e5bff`(精致蓝)+ `#0b1530`(深藏青) |
+| 正文 | 15.5px / 1.85 行高 / 0.4px 字间距 |
+| 二级标题 | 蓝色左边框 + 渐变背景 + 圆角 |
+| 引用块 | 浅蓝底 + 蓝色左边框 + 圆角 |
+| 代码块 | 深色 `#0f1729` / 10px 圆角 / 细边框 |
+| 图片 | 8px 圆角 + 柔和阴影 + 浅蓝边框 |
+| 列表 | 自定义样式数字标号 + `min-height` 防塌 |
+| 粗体强调 | 深藏青 + 渐变黄色下划线 |
+
+打开 `generated/Theme Showcase.html` 可并排预览全部 6 套主题。
 
 ### 自定义配色
 
