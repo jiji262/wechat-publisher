@@ -22,11 +22,12 @@ scripts/.token_cache*.json
 .DS_Store
 Thumbs.db
 
-# Generated articles (keep templates, ignore outputs)
+# Generated articles — everything is a runtime output, only README survives in git
 article.md
 article.html
 article_preview.html
-generated/
+generated/*
+!generated/README.md
 
 # IDE / Harness state
 .vscode/
