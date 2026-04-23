@@ -22,6 +22,10 @@ from config import (  # noqa: F401
     list_accounts,
     get_config,
     load_env,
+    get_image_style,
+    list_image_styles,
+    resolve_image_style,
+    DEFAULT_IMAGE_STYLE,
 )
 from wechat_token import (  # noqa: F401
     get_access_token,
@@ -29,8 +33,11 @@ from wechat_token import (  # noqa: F401
 from api import (  # noqa: F401
     upload_thumb_image,
     upload_content_image,
+    upload_newspic_image,
     add_draft,
+    add_newspic_draft,
     publish_article,
+    publish_newspic,
 )
 
 
@@ -63,6 +70,16 @@ if __name__ == "__main__":
     sub_draft.add_argument("--cover", required=True, help="封面图路径")
     sub_draft.add_argument("--author", default="", help="作者(默认从账号配置读)")
     sub_draft.add_argument("--digest", default="", help="摘要")
+
+    sub_newspic = subparsers.add_parser("newspic", help="从一组图片创建贴图(图片消息)草稿")
+    sub_newspic.add_argument("--title", default="", help="标题(可空)")
+    sub_newspic.add_argument("--content", required=True,
+                             help="短文本(100-300 字),可以是字符串或文件路径")
+    sub_newspic.add_argument("--images", required=True, nargs="+",
+                             help="图片路径列表(5-20 张),顺序即展示顺序,第 1 张是封面")
+    sub_newspic.add_argument("--author", default="", help="作者(默认从账号配置读)")
+
+    subparsers.add_parser("list-image-styles", help="列出所有可用配图风格")
 
     args = parser.parse_args()
 
@@ -106,6 +123,35 @@ if __name__ == "__main__":
                 digest=args.digest,
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
+
+        elif args.command == "newspic":
+            # content 允许是文件路径也允许是字符串
+            content_arg = args.content
+            from pathlib import Path as _P
+            if _P(content_arg).exists():
+                with open(content_arg, "r", encoding="utf-8") as f:
+                    content_text = f.read().strip()
+            else:
+                content_text = content_arg
+            result = publish_newspic(
+                title=args.title,
+                content=content_text,
+                image_paths=args.images,
+                author=args.author,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+
+        elif args.command == "list-image-styles":
+            styles = list_image_styles()
+            if not styles:
+                print("未找到任何配图风格(assets/image-styles/ 为空)")
+            else:
+                print(f"已配置 {len(styles)} 个配图风格:")
+                for s in styles:
+                    default_mark = " (默认)" if s == DEFAULT_IMAGE_STYLE else ""
+                    meta = get_image_style(s)
+                    print(f"  {s:26s}  {meta.get('display_name', ''):16s}  "
+                          f"{meta.get('description', '')[:40]}...{default_mark}")
 
         else:
             parser.print_help()

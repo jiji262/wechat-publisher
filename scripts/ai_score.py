@@ -243,7 +243,8 @@ def score_punctuation_flatness(text: str) -> tuple:
 
 # ---------- 总评 ----------
 
-WEIGHTS = {
+# 长文(news)用的完整 5 维权重
+WEIGHTS_NEWS = {
     "burstiness": 0.30,
     "phrases": 0.30,
     "vocab": 0.20,
@@ -251,8 +252,36 @@ WEIGHTS = {
     "punctuation": 0.10,
 }
 
+# 短文(newspic 贴图)用的精简权重
+# - 短文本里 burstiness 和 structural 都不稳定(句子/枚举少),权重归 0
+# - phrases 和 vocab 是 AI 味主要来源
+# - punctuation 保留兜底(整篇只有句号也是 AI 信号)
+WEIGHTS_NEWSPIC = {
+    "burstiness": 0.0,
+    "phrases": 0.55,
+    "vocab": 0.35,
+    "structural": 0.0,
+    "punctuation": 0.10,
+}
 
-def analyze(md_text: str) -> dict:
+# 向后兼容:现有代码从本模块 `from ai_score import WEIGHTS` 的地方仍然能读到长文权重
+WEIGHTS = WEIGHTS_NEWS
+
+
+def _weights_for(mode: str) -> dict:
+    if mode == "newspic":
+        return WEIGHTS_NEWSPIC
+    return WEIGHTS_NEWS
+
+
+def analyze(md_text: str, mode: str = "news") -> dict:
+    """
+    对一段 Markdown(或纯文本)做 AI 味打分。
+
+    Args:
+        md_text: 原文
+        mode:  "news"(默认,长文 5 维)或 "newspic"(贴图短文本,phrases + vocab + punctuation)
+    """
     plain = _strip_markdown(md_text)
     sentences = _split_sentences(plain)
 
@@ -262,12 +291,13 @@ def analyze(md_text: str) -> dict:
     s_score, s_det = score_structural_perfection(plain)
     pu_score, pu_det = score_punctuation_flatness(plain)
 
+    weights = _weights_for(mode)
     total = (
-        b_score * WEIGHTS["burstiness"]
-        + p_score * WEIGHTS["phrases"]
-        + v_score * WEIGHTS["vocab"]
-        + s_score * WEIGHTS["structural"]
-        + pu_score * WEIGHTS["punctuation"]
+        b_score * weights["burstiness"]
+        + p_score * weights["phrases"]
+        + v_score * weights["vocab"]
+        + s_score * weights["structural"]
+        + pu_score * weights["punctuation"]
     )
 
     verdict = (
@@ -279,6 +309,7 @@ def analyze(md_text: str) -> dict:
     return {
         "total_ai_score": round(total, 1),
         "verdict": verdict,
+        "mode": mode,
         "char_count": len(plain),
         "sentence_count": len(sentences),
         "dimensions": {
@@ -288,36 +319,43 @@ def analyze(md_text: str) -> dict:
             "structural":   {"score": s_score,  "detail": s_det},
             "punctuation":  {"score": pu_score, "detail": pu_det},
         },
-        "weights": WEIGHTS,
+        "weights": weights,
     }
 
 
-def check_ai_score(md_content: str, threshold: float = DEFAULT_THRESHOLD) -> tuple:
+def check_ai_score(
+    md_content: str,
+    threshold: float = DEFAULT_THRESHOLD,
+    mode: str = "news",
+) -> tuple:
     """
     库入口:对 md 内容做 AI 味检测。
 
     Args:
         md_content: Markdown 原文
         threshold: 失败阈值(total_score >= threshold 视为失败)
+        mode: "news"(长文)或 "newspic"(贴图短文本,只看 phrases/vocab/punctuation)
 
     Returns:
         (passed, report)
           passed: bool,total_score < threshold 时为 True
           report: dict,包含:
             - total_score: float  总分 0-100
+            - mode: str
             - dimensions: dict    各维度原始分(未加权)
                 - burstiness / phrases / vocab / structural / punctuation
             - hit_phrases: list[str]  命中的 AI 套话样本
             - hit_vocab:   list[str]  命中的 AI 词汇样本
             - threshold:   float
     """
-    full = analyze(md_content)
+    full = analyze(md_content, mode=mode)
     dims = full["dimensions"]
     hit_phrases = list(dims["phrases"]["detail"].get("samples", []))
     hit_vocab = [w for w, _ in dims["vocab"]["detail"].get("top", [])]
 
     report = {
         "total_score": full["total_ai_score"],
+        "mode": full.get("mode", mode),
         "dimensions": {
             "burstiness":  dims["burstiness"]["score"],
             "phrases":     dims["phrases"]["score"],
@@ -337,12 +375,16 @@ def _pretty_print(report: dict):
     print("=" * 60)
     print(f" AI 味检测报告  —— {report['verdict']}")
     print("=" * 60)
+    mode = report.get("mode", "news")
+    print(f"模式: {mode}  (news=长文, newspic=贴图短文)")
     print(f"总分: {report['total_ai_score']} / 100  (0 = 纯真人, 100 = 纯 AI)")
     print(f"字数: {report['char_count']}  句数: {report['sentence_count']}")
     print("-" * 60)
+    weights = report.get("weights", WEIGHTS)
     for name, d in report["dimensions"].items():
-        w = WEIGHTS[name]
-        print(f"  [{name:13s}] 分数={d['score']:>5}  权重={int(w*100)}%")
+        w = weights.get(name, 0)
+        suffix = "  [跳过]" if w == 0 else ""
+        print(f"  [{name:13s}] 分数={d['score']:>5}  权重={int(w*100)}%{suffix}")
         det = d["detail"]
         if name == "phrases" and det.get("hit_count"):
             print(f"      命中 {det['hit_count']} 次 AI 套话:")
@@ -372,12 +414,18 @@ def main():
         default=DEFAULT_THRESHOLD,
         help=f"失败阈值(默认 {DEFAULT_THRESHOLD})。总分 >= 阈值则 exit 1",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["news", "newspic"],
+        default="news",
+        help="检测模式: news(长文,默认)/ newspic(贴图短文本,只看 phrases+vocab+punctuation)",
+    )
     args = parser.parse_args()
 
     md = Path(args.input).read_text(encoding="utf-8")
     # 走和库 API 相同的 check_ai_score 路径,保证 CLI/库行为一致。
-    passed, _ = check_ai_score(md, threshold=args.threshold)
-    full = analyze(md)  # 用于详细打印(库 API 只返回简表)
+    passed, _ = check_ai_score(md, threshold=args.threshold, mode=args.mode)
+    full = analyze(md, mode=args.mode)  # 用于详细打印(库 API 只返回简表)
 
     if args.json:
         print(json.dumps(full, ensure_ascii=False, indent=2))

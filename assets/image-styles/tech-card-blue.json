@@ -1,0 +1,39 @@
+{
+  "style_name": "tech-card-blue",
+  "display_name": "蓝调科技卡",
+  "description": "浅底大字蓝点缀,极简工程感。每张卡一个观点/一条命令,字体占据视觉主导,其余极少装饰。适合技术技巧、命令讲解、短观点。",
+  "suitable_for": [
+    "tech-tips",
+    "command-explanation",
+    "short-insights",
+    "AI-product-tips",
+    "developer-tools"
+  ],
+  "newspic_ready": true,
+  "article_ready": true,
+  "canvas": {
+    "newspic_aspect": "1:1",
+    "newspic_size": "1080x1080",
+    "article_aspect": "16:9",
+    "article_size": "1440x810"
+  },
+  "palette": {
+    "background": "#f4f7ff",
+    "primary": "#2e5bff",
+    "accent": "#0b1530",
+    "text": "#0b1530",
+    "secondary_text": "#5a6577"
+  },
+  "typography": {
+    "heading": "思源黑体 Heavy / PingFang SC Heavy",
+    "body": "思源黑体 Regular / PingFang SC Regular",
+    "weight_contrast": "大标题 Heavy + 正文 Regular,对比强"
+  },
+  "mood": ["clean", "professional", "tech", "minimal", "calm"],
+  "prompt_template": {
+    "newspic_card": "Generate a minimalist Chinese tech-style card image, 1:1 square. Clean light blue background (#f4f7ff) with very subtle geometric grid pattern. Central bold Chinese text '{card_main}' in deep navy (#0b1530), using a heavy sans-serif font (思源黑体 Heavy style), occupying about 40-60% of the card height. Below it, smaller secondary text '{card_sub}' in muted gray (#5a6577). A small blue (#2e5bff) slash mark, arrow, or command-prompt symbol as accent in a corner. No photos, no illustrations, no gradients, pure typography-focused layout. Generous white space. Feel: calm, engineered, developer-friendly, Anthropic / Linear / Stripe aesthetic.",
+    "article_inline": "Generate a minimalist Chinese tech-style illustration, 16:9. Clean light blue background (#f4f7ff). Topic: '{image_subject}'. Use simple blue (#2e5bff) geometric shapes, icons, or flat UI mockups to visualize the concept. Include Chinese label text in deep navy (#0b1530). Heavy sans-serif font. No photos, no 3D, no gradients. Developer aesthetic, feel like an Anthropic or Linear product illustration."
+  },
+  "example_reference": "https://mp.weixin.qq.com/s/erEF74HRGkrBPxTGsKDsSQ",
+  "notes": "注意保留充足留白。如果文字占满画面就失去了风格特征。每张卡只讲一个点,多个点用多张卡表现。"
+}

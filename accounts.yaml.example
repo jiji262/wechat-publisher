@@ -11,8 +11,13 @@ accounts:
     app_id: "wx1234567890abcdef"
     app_secret: "your_app_secret_here"
     author: "飞哥"
-    # 可选:HTML 主题。可选值: refined-blue(默认) | minimal-mono | warm-editorial | elegant-ink | sunset-coral | sage-premium
+    # 可选:文章排版主题。对应 assets/themes/<name>.json
+    #   refined-blue(默认) | minimal-mono | warm-editorial | elegant-ink | sunset-coral | sage-premium
     # theme: "refined-blue"
+    # 可选:配图风格(文章内联图 + newspic 贴图共用)。对应 assets/image-styles/<name>.json
+    #   hand-drawn-blue(默认) | tech-card-blue | xiaohongshu-colorful | quote-card-minimal
+    #   magazine-editorial | knowledge-card | data-chart | meme-illustration
+    # image_style: "hand-drawn-blue"
     # 可选:文章作者简介(部分平台显示在文末)
     # voice: |
     #   飞哥，独立开发者，专注 AI 与效率工具。
@@ -27,6 +32,7 @@ accounts:
     app_secret: "another_app_secret"
     author: "技术团队"
     # theme: "minimal-mono"
+    # image_style: "tech-card-blue"
     # voice: |
     #   技术团队，持续输出工程实践。
     # sync_platforms: [juejin, csdn, segmentfault]
@@ -37,3 +43,4 @@ accounts:
     app_secret: "company_app_secret"
     author: "官方"
     # theme: "warm-editorial"
+    # image_style: "magazine-editorial"

@@ -11,6 +11,7 @@ accounts.yaml 为唯一可信来源,不再从 .env 读取微信凭证。
     cfg = get_config()  # 返回当前账号的完整配置
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Optional, Dict, List, Any
@@ -210,6 +211,84 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
         "account_key": account_name,
         "account_name": acc.get("name", account_name),
         "theme": acc.get("theme", "") or "",
+        "image_style": acc.get("image_style", "") or "",
         "voice": acc.get("voice", "") or "",
         "sync_platforms": sync_platforms,
     }
+
+
+# ============================================================
+# 图片风格(assets/image-styles/<name>.json)
+# ============================================================
+
+DEFAULT_IMAGE_STYLE = "hand-drawn-blue"
+
+
+def _image_styles_dir() -> Path:
+    """配图风格 JSON 目录: <skill>/assets/image-styles/"""
+    return Path(__file__).parent.parent / "assets" / "image-styles"
+
+
+def list_image_styles() -> List[str]:
+    """列出所有可用配图风格名(按名字排序)。"""
+    d = _image_styles_dir()
+    if not d.exists():
+        return []
+    return sorted(p.stem for p in d.glob("*.json"))
+
+
+def get_image_style(name: Optional[str] = None) -> Dict[str, Any]:
+    """
+    加载一个配图风格的配置。
+
+    Args:
+        name: 风格名(对应 assets/image-styles/<name>.json)。
+              None 时使用 DEFAULT_IMAGE_STYLE(hand-drawn-blue)。
+
+    Returns:
+        完整的 style dict(至少包含 style_name / display_name / prompt_template 等)。
+
+    Raises:
+        ConfigError: 风格文件不存在或 JSON 损坏。
+    """
+    style_name = name or DEFAULT_IMAGE_STYLE
+    path = _image_styles_dir() / f"{style_name}.json"
+    if not path.exists():
+        available = ", ".join(list_image_styles()) or "(无)"
+        raise ConfigError(
+            f"未找到配图风格 '{style_name}'。可用风格: {available}"
+        )
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise ConfigError(f"配图风格 '{style_name}' JSON 解析失败: {e}") from e
+
+
+def resolve_image_style(
+    cli_value: Optional[str] = None,
+    frontmatter_value: Optional[str] = None,
+    account_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    按优先级解析最终使用的配图风格:
+      1. CLI 参数(--image-style)
+      2. brief.md / article.md 的 frontmatter image_style 字段
+      3. accounts.yaml 对应账号的 image_style 字段
+      4. DEFAULT_IMAGE_STYLE(hand-drawn-blue)
+
+    Returns:
+        与 get_image_style() 相同的 style dict。
+    """
+    for candidate in (cli_value, frontmatter_value):
+        if candidate:
+            return get_image_style(candidate)
+
+    try:
+        cfg = get_config(account_name)
+        if cfg.get("image_style"):
+            return get_image_style(cfg["image_style"])
+    except ConfigError:
+        pass
+
+    return get_image_style(DEFAULT_IMAGE_STYLE)

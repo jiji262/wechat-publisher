@@ -28,11 +28,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from wechat_api import (
     publish_article,
+    publish_newspic,
     upload_thumb_image,
     get_access_token,
     set_account,
     get_config,
     ConfigError,
+    resolve_image_style,
+    list_image_styles,
 )
 from html_converter import convert_markdown_to_wechat_html, load_styles, load_theme
 from image_handler import process_article_images
@@ -369,6 +372,173 @@ def publish_from_markdown(
     return result
 
 
+def publish_from_brief(
+    brief_path,
+    account_name: Optional[str] = None,
+    image_style: Optional[str] = None,
+    title: Optional[str] = None,
+    author: Optional[str] = None,
+    ai_score_threshold: float = None,
+    skip_ai_score: bool = False,
+):
+    """
+    从 brief.md 发布贴图(newspic)到草稿箱。
+
+    期望目录布局(brief.md 旁边):
+        <dir>/
+          brief.md        # 本次输入,含 frontmatter + 要点 + 短文本
+          card_plan.json  # (可选)newspic_build.py 生成过就存在
+          images/
+            01.png
+            02.png
+            ...
+
+    完整流程:
+      1. 解析 brief.md,拿到 topic / title / account / image_style / 短文本
+      2. 检查 images/ 下按 NN.png(或其他格式)顺序命名的图片
+      3. 如短文本不空,过 AI 味 gate(newspic 模式)
+      4. 依次上传图片为永久素材,收到 media_id
+      5. 调 draft/add article_type=newspic 建草稿
+
+    Args:
+        brief_path: brief.md 路径
+        account_name: 覆盖 frontmatter.account
+        image_style: 覆盖 frontmatter.image_style(优先级最高,但本函数主要用于发布,
+                     真正影响生图的是 newspic_build.py。这里仅记录到返回值里)
+        title: 覆盖 frontmatter.title
+        author: 覆盖账号默认作者
+        ai_score_threshold: AI 味检测阈值(newspic 短文本)
+        skip_ai_score: 跳过短文本检测
+
+    Returns:
+        dict: 发布结果(同 publish_newspic 返回值),外加 "image_style" / "cards" 信息
+    """
+    # 延迟导入以避免与 newspic_build 的循环依赖(实际无依赖,但保持对称)
+    from newspic_build import parse_brief
+
+    brief_path = Path(brief_path)
+    if not brief_path.exists():
+        raise FileNotFoundError(f"brief.md 不存在: {brief_path}")
+
+    parsed = parse_brief(brief_path.read_text(encoding="utf-8"))
+    fm = parsed["frontmatter"] or {}
+    sections = parsed["sections"]
+
+    # 账号解析: CLI > frontmatter > 全局激活
+    final_account = account_name or fm.get("account")
+    if final_account:
+        set_account(final_account)
+
+    # 标题/作者/风格
+    final_title = title or fm.get("title", "") or ""
+    style = resolve_image_style(
+        cli_value=image_style,
+        frontmatter_value=fm.get("image_style"),
+        account_name=final_account,
+    )
+
+    # 短文本
+    short_text = (sections.get("短文本") or sections.get("短描述") or "").strip()
+
+    print("=" * 60)
+    print("微信公众号贴图(newspic)发布")
+    print("=" * 60)
+    print(f"brief:    {brief_path}")
+    print(f"话题:     {fm.get('topic', '(未填)')}")
+    print(f"标题:     {final_title or '(空)'}")
+    print(f"风格:     {style['style_name']} ({style.get('display_name','')})")
+    print(f"短文本:   {len(short_text)} 字")
+
+    # 收集图片
+    images_dir = brief_path.parent / "images"
+    if not images_dir.exists():
+        raise FileNotFoundError(
+            f"找不到图片目录: {images_dir}\n"
+            f"请先用 newspic_build.py + baoyu-danger-gemini-web 生成贴图,保存为 {images_dir}/01.png 起。"
+        )
+    exts = (".png", ".jpg", ".jpeg", ".webp")
+    image_paths = sorted(
+        [p for p in images_dir.iterdir() if p.suffix.lower() in exts],
+        key=lambda p: p.name,
+    )
+    if not image_paths:
+        raise FileNotFoundError(f"{images_dir} 下没有图片,请先生图")
+    if len(image_paths) < 2:
+        print(f"[警告] 只有 {len(image_paths)} 张图。newspic 建议 5-10 张。")
+    if len(image_paths) > 20:
+        print(f"[警告] {len(image_paths)} 张超出微信 20 张上限,截取前 20 张")
+        image_paths = image_paths[:20]
+    print(f"图片:     {len(image_paths)} 张  (首张 {image_paths[0].name} 为封面)")
+    print("-" * 60)
+
+    # AI 味 gate(newspic 模式)
+    if not skip_ai_score and short_text:
+        try:
+            from ai_score import check_ai_score, DEFAULT_THRESHOLD as _DEFAULT_THRESHOLD
+        except ImportError as exc:
+            print(f"[警告] 无法加载 ai_score({exc}),跳过短文本检测。")
+        else:
+            _threshold = ai_score_threshold if ai_score_threshold is not None else _DEFAULT_THRESHOLD
+            print(f"\n[预检] AI 味检测(newspic 模式,阈值 {_threshold})...")
+            passed, report = check_ai_score(short_text, _threshold, mode="newspic")
+            print(f"  总分: {report['total_score']} / 100")
+            if not passed:
+                print(f"  结果: 未通过(>= 阈值 {_threshold})")
+                hit_phrases = report.get("hit_phrases") or []
+                hit_vocab = report.get("hit_vocab") or []
+                if hit_phrases:
+                    print("  命中 AI 套话: " + ", ".join(hit_phrases[:8]))
+                if hit_vocab:
+                    print("  命中 AI 高频词: " + ", ".join(str(v) for v in hit_vocab[:10]))
+                print(
+                    "\n  发布已阻止。请重写 brief.md 的『# 短文本』段落,去掉套话。\n"
+                    "  或用 --skip-ai-score 跳过(不推荐)。"
+                )
+                raise SystemExit(1)
+            print("  结果: 通过")
+
+    # 验证 API 连接(fail fast,避免图片上传一半才发现 token 错)
+    print("\n[步骤1] 验证 API 连接...")
+    try:
+        get_access_token()
+        print("  API 连接正常")
+    except Exception as e:
+        print(f"  API 连接失败: {e}")
+        raise SystemExit(1)
+
+    # 作者兜底
+    if author is None:
+        try:
+            cfg = get_config(final_account)
+            author = cfg.get("author", "") or ""
+        except ConfigError:
+            author = ""
+
+    # 上传 + 建草稿
+    print("\n[步骤2] 上传图片 + 创建贴图草稿...")
+    result = publish_newspic(
+        title=final_title,
+        content=short_text,
+        image_paths=image_paths,
+        author=author,
+    )
+
+    result["image_style"] = style["style_name"]
+    result["type"] = "newspic"
+    result["cards"] = len(image_paths)
+    result["brief_path"] = str(brief_path)
+
+    print("\n" + "=" * 60)
+    print("贴图发布完成!")
+    print(f"  草稿 media_id: {result['media_id']}")
+    print(f"  图片张数: {result['cards']}")
+    print(f"  风格: {result['image_style']}")
+    print("  请登录微信公众平台查看草稿箱")
+    print("=" * 60)
+
+    return result
+
+
 def publish_from_html(
     html_path,
     title,
@@ -448,6 +618,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--input", "-i", help="Markdown文件路径")
     parser.add_argument("--html", help="HTML文件路径（已排版）")
+    parser.add_argument("--brief", help="贴图(newspic)模式的 brief.md 路径")
+    parser.add_argument(
+        "--type",
+        choices=["news", "newspic"],
+        default=None,
+        help="发布类型: news(图文,默认) / newspic(贴图/图片消息)。"
+             "--brief 存在时自动推断为 newspic",
+    )
     parser.add_argument("--title", "-t", help="文章标题（默认从文章提取）")
     parser.add_argument("--cover", "-c", help="封面图路径")
     parser.add_argument("--author", "-a", default=None,
@@ -456,6 +634,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-url", default="", help="原文链接")
     parser.add_argument("--style", help="自定义样式JSON路径")
     parser.add_argument("--theme", help="排版主题名(对应 assets/themes/<name>.json,默认从账号配置读取)")
+    parser.add_argument(
+        "--image-style",
+        help="配图风格名(对应 assets/image-styles/<name>.json)。"
+             "优先级: CLI > brief/article frontmatter > 账号默认 > hand-drawn-blue。"
+             "list: python3 wechat_api.py list-image-styles",
+    )
     parser.add_argument(
         "--temp-dir",
         default=None,
@@ -550,7 +734,22 @@ def main():
     # 解析最终要同步的平台列表
     sync_platforms = _resolve_sync_platforms(args, config_sync_platforms)
 
-    if args.html:
+    # --brief 存在 或 --type newspic 走贴图分支
+    if args.brief or args.type == "newspic":
+        if not args.brief:
+            parser.error("--type newspic 需要同时指定 --brief <brief.md>")
+        if args.sync or args.sync_from_config:
+            parser.error("贴图(newspic)模式不支持多平台同步")
+        result = publish_from_brief(
+            brief_path=args.brief,
+            account_name=args.account,
+            image_style=args.image_style,
+            title=args.title,
+            author=args.author,
+            ai_score_threshold=args.ai_score_threshold,
+            skip_ai_score=args.skip_ai_score,
+        )
+    elif args.html:
         if not args.title or not args.cover:
             parser.error("使用 --html 模式时，必须提供 --title 和 --cover")
         if args.sync or args.sync_from_config:
@@ -583,7 +782,7 @@ def main():
             debug=args.debug,
         )
     else:
-        parser.error("请提供 --input (Markdown) 或 --html 参数")
+        parser.error("请提供 --input (Markdown) / --html / --brief(贴图)参数")
 
     # 输出JSON结果
     print("\n" + json.dumps(result, ensure_ascii=False, indent=2))
