@@ -28,7 +28,7 @@ pip install requests pyyaml
 - **全网素材搜索**:围绕话题自动多轮搜索,交叉验证数据,筛选最新案例和权威观点
 - **AI智能写作**:按照头部博主风格生成3000-5000字深度文章,反AI味写作规则,段落短小有呼吸感
 - **AI配图生成**:通过 `baoyu-danger-gemini-web` skill(或其他图片生成 skill)为每个章节生成风格统一的手绘信息图(6-10张/篇)
-- **微信排版转换**:Markdown → 微信兼容HTML,所有样式自动内联,支持 refined-blue / minimal-mono / warm-editorial / elegant-ink / sunset-coral / sage-premium 六套主题
+- **微信排版转换**:Markdown → 微信兼容 HTML,所有样式自动内联,内置 **16 套主题(v2026)**,覆盖 AI/技术/商业/新闻/人文/生活/时尚 7 大场景,见下方[排版主题](#排版主题)章节
 - **图片CDN上传**:自动上传图片到微信服务器,获取 `mmbiz.qpic.cn` 链接并替换占位符
 - **一键发布草稿**:封面图、标题、摘要、作者全部自动填好,直达草稿箱
 - **反 AI 检测 gate**:`ai_score.py` 按 burstiness / 套话 / 词汇 / 结构 / 标点 5 维打分,publish.py 发布前自动拦截高分稿
@@ -50,14 +50,14 @@ wechat-publisher/
 │   ├── config.py               # accounts.yaml 加载 + ConfigError
 │   ├── wechat_token.py         # access_token 获取与本地缓存
 │   ├── api.py                  # 图片上传 / 草稿创建 / 发布
-│   ├── html_converter.py       # Markdown → 微信 HTML(多主题 + 行内标色)
+│   ├── html_converter.py       # Markdown → 微信 HTML(16 套主题 + 行内标色 + list_style)
 │   ├── image_handler.py        # 图片下载 / 上传 / 替换
 │   ├── ai_score.py             # 反 AI 检测自检(publish.py 自动调用)
 │   ├── newspic_build.py        # 贴图(图片消息)模式:brief.md → card_plan.json
 │   └── multi_publish.py        # 可选:同步到知乎/掘金/CSDN(基于 @wechatsync/cli)
 ├── assets/
-│   ├── themes/                 # 排版主题(6 套 .json)
-│   ├── theme-previews/         # 6 套主题的 HTML 预览(index.html 并排对比)
+│   ├── themes/                 # 排版主题(16 套 .json)
+│   ├── theme-previews/         # 16 套主题的 HTML 预览(index.html 并排对比)
 │   └── image-styles/           # 9 套配图风格(.json + previews/*.webp)
 ├── references/
 │   └── api_reference.md        # 微信公众平台 API 参考(节选)
@@ -266,35 +266,69 @@ python3 scripts/ai_score.py article.md --threshold 45
 
 ## 排版主题
 
-内置六套主题,位于 `assets/themes/*.json`:
+内置 **16 套主题(v2026)**,位于 `assets/themes/*.json`。所有主题都遵守:正文 ~15.5px、行高 ~1.85、纯 inline style、无外部依赖,粘贴进公众号编辑器不丢样式。
 
-| 主题 | 视觉 | 典型账号 / 场景 |
+> **想直观看效果?** 打开 [`assets/theme-previews/index.html`](assets/theme-previews/index.html),16 套主题用同一篇文章渲染在手机宽度 frame 里并排对比,带分类筛选和色板预览。
+
+### 按文章气质挑选
+
+| 类别 | 推荐主题 | 视觉关键词 |
 |---|---|---|
-| `refined-blue` | 蓝调极简 + 精致层次 / 数字标号 | main(飞哥 / 刷屏AI) |
-| `minimal-mono` | 黑白极简、工程师风 | tech(葱哥 / 蒜是哪根葱) |
-| `warm-editorial` | 栗色暖调、衬线杂志风 | 观点 / 随笔 |
-| `elegant-ink` | 水墨雅韵、墨黑 + 朱砂红、宋体 | 人文 / 文化 / 哲思 |
-| `sunset-coral` | 夕阳珊瑚、暖橙 + 奶白 | 热点 / 榜单 / 潮流 |
-| `sage-premium` | 鼠尾草墨绿、克制专业 | 数据分析 / 研究报告 |
+| **AI / 产品 / 深度分析** | `refined-blue` **(main 默认)** · `business-navy` · `sage-premium` | 蓝调 / 深蓝金 / 鼠尾草绿 |
+| **技术 / SDK / 工程** | `minimal-mono` **(tech 默认)** · `minimal-bw` · `academic-paper` · `cyber-neon` | 等宽 / 黑白 / 论文衬线 / 赛博霓虹 |
+| **新闻 / 热点 / 速读** | `news-bold` · `warm-editorial` | 红黑强对比 / 栗色暖调 |
+| **人文 / 随笔 / 文化** | `ink-wash` · `elegant-ink` · `magazine-grid` | 米黄朱砂 / 墨黑朱砂 / 杂志衬线 |
+| **生活 / 美食 / 旅行** | `warm-orange` · `mint-fresh` · `sunset-coral` | 暖橙 / 薄荷 / 珊瑚 |
+| **时尚 / 美妆 / 情感** | `girly-pink` · `sunset-coral` | 粉紫渐变 / 暖橙奶白 |
 
-`refined-blue` 默认样式亮点:
+或直接命令行列出:
+
+```bash
+python3 scripts/html_converter.py --list-themes
+```
+
+### `refined-blue` 默认样式亮点
 
 | 元素 | 样式 |
 |------|------|
 | 主色调 | `#2e5bff`(精致蓝)+ `#0b1530`(深藏青) |
-| 正文 | 15.5px / 1.85 行高 / 0.4px 字间距 |
+| 正文 | 15.5px / 1.85 行高 / 0.35px 字间距 |
 | 二级标题 | 蓝色左边框 + 渐变背景 + 圆角 |
 | 引用块 | 浅蓝底 + 蓝色左边框 + 圆角 |
 | 代码块 | 深色 `#0f1729` / 10px 圆角 / 细边框 |
 | 图片 | 8px 圆角 + 柔和阴影 + 浅蓝边框 |
-| 列表 | 自定义样式数字标号 + `min-height` 防塌 |
+| 有序列表 | 渐变方块数字标号(02 位补零) |
+| 无序列表 | 蓝紫渐变小圆点 |
 | 粗体强调 | 深藏青 + 渐变黄色下划线 |
 
-打开 `assets/theme-previews/index.html` 可并排预览全部 6 套主题。
+### 主题文件结构
 
-### 自定义配色
+每个主题是 `assets/themes/<theme>.json`,4 个关键字段:
 
-编辑 `assets/themes/<theme>.json`,修改 `styles` 或 `highlights` 字段。老版本的 `assets/style_config.json` 已移除,主题文件现在是唯一来源。
+| 字段 | 作用 |
+|---|---|
+| `styles` | 各标签(body / h1~h3 / p / blockquote / ul / ol / li / hr / a / table / code_block / 等)的 inline style |
+| `highlights` | 7 种行内标记的样式:`hl_yellow` / `hl_blue` / `hl_pink` / `hl_green` / `em_red` / `em_blue` / `em_orange` |
+| `section_divider_text` | `===` / `[SEC]` 渲染出的分节字符,如 `● ● ●` / `— — —` / `§ § §` |
+| `list_style` | 有序/无序列表的数字 / 项目符号样式。`num_formatter` 可选 `decimal` / `padded` / `chinese` / `roman_upper` / `roman_lower` / `circled` / `circled_filled` |
+
+### 自定义 / 新增主题
+
+复制任意一份 `assets/themes/*.json`、改个名字、改键即可。**不需要改 `html_converter.py`**,新主题立刻可用:
+
+```bash
+cp assets/themes/refined-blue.json assets/themes/my-brand.json
+# 编辑 my-brand.json,改 styles / highlights / list_style
+python3 scripts/html_converter.py article.md --theme my-brand -o preview.html
+```
+
+### v2026 升级说明
+
+如果你从老版本(6 套主题)升级到 v2026,有 3 个变化:
+
+1. **主题数 6 → 16**,所有原有主题名(`refined-blue` / `minimal-mono` / `elegant-ink` / `sage-premium` / `sunset-coral` / `warm-editorial`)保留并升级,直接调用即可
+2. **新分节符语法**:除了原有的 `===`,现在也支持 `[SEC]` 单独一行(等价)
+3. **主题可控的列表样式**:`list_style.num_formatter` 让有序列表的数字在不同主题里有不同视觉(渐变方块 / 中文一二三 / 圆圈数字 / 罗马数字…)。老主题已统一升级,不需要手动迁移
 
 ## 脚本说明
 
@@ -320,7 +354,9 @@ python3 scripts/ai_score.py article.md --threshold 45
 - 所有 CSS 样式内联到每个标签的 `style` 属性
 - HTML 实体转义(`<script>` 等标签不会被误解析,`javascript:` URL 不会生效)
 - 支持标题、段落、列表、引用块、代码块、表格、图片、链接等 Markdown 语法
-- 自定义行内标记(`==黄==` / `++蓝==` / `%%粉==` / `&&绿==` / `!!红!!` / `@@蓝@@` / `^^橙^^`)
+- 自定义行内标记(`==黄==` / `++蓝++` / `%%粉%%` / `&&绿&&` / `!!红!!` / `@@蓝@@` / `^^橙^^`)
+- 分节符:`===` 或 `[SEC]` 单独一行,渲染为主题自带的分节字符
+- 主题级 `list_style`:每套主题可定义自己的有序列表数字样式(阿拉伯 / 中文 / 罗马 / 圆圈)和无序列表项目符号
 
 ### image_handler.py - 图片处理
 

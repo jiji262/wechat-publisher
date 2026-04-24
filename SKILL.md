@@ -160,7 +160,7 @@ pip install requests pyyaml --break-system-packages 2>/dev/null || pip install r
 | `@@文本@@` | 蓝色强调(不加背景) | 术语 / 专有名词 / 产品名 |
 | `^^文本^^` | 橙色强调 | 温暖点缀 / 小惊喜 |
 | `> ...` | 引用块 | 金句、关键数据、一段独立有力的话 |
-| `===` 单独一行 | 分节符(◆ ◆ ◆) | 大段之间的呼吸符 |
+| `===` 或 `[SEC]` 单独一行 | 分节符(主题自带字符,如 `● ● ●` / `— — —` / `§ § §`) | 大段之间的呼吸符 |
 
 **密度建议**:每 500 字出现 **3-5 处** 行内标记,分散在不同段落,**至少混用 4 种不同的标记类型**。禁止整篇只有 `**加粗**` 一种。
 
@@ -333,7 +333,7 @@ python3 scripts/image_handler.py upload /path/to/generated_image.png
 
 ```bash
 python3 scripts/html_converter.py article_processed.md \
-  --theme <refined-blue|minimal-mono|warm-editorial|elegant-ink|sunset-coral|sage-premium> \
+  --theme <theme-name> \
   -o article.html
 ```
 
@@ -343,18 +343,41 @@ python3 scripts/html_converter.py article.md --list-themes
 python3 scripts/html_converter.py article.md --theme refined-blue -o preview.html
 ```
 
-对比全部主题的可视化预览:打开 `assets/theme-previews/index.html`,6 套主题用同一篇文章渲染在手机宽度 frame 里并排对比。
+对比全部主题的可视化预览:打开 `assets/theme-previews/index.html`,16 套主题用同一篇文章渲染在手机宽度 frame 里并排对比。
 
-#### 主题说明
+#### 主题说明(共 16 套 · v2026)
 
-| 主题 | 视觉 | 适用场景 | 默认绑定 |
-|---|---|---|---|
-| `refined-blue` | 蓝调极简 + 精致层次 / 数字标号 / 渐变高亮 | AI / 产品 / 深度分析 | **main**(刷屏AI) |
-| `minimal-mono` | 黑白极简,工程师风 | 技术 / SDK / 源码拆解 | **tech**(蒜是哪根葱) |
-| `warm-editorial` | 栗色暖调,衬线杂志风 | 观点 / 随笔 / 行业评论 | (可选) |
-| `elegant-ink` | 水墨雅韵,墨黑 + 朱砂红,宋体 | 人文 / 文化 / 哲思长文 | (可选) |
-| `sunset-coral` | 夕阳珊瑚,暖橙 + 奶白 | 热点 / 榜单 / 潮流 / 轻快话题 | (可选) |
-| `sage-premium` | 鼠尾草墨绿,克制专业 | 数据分析 / 研究报告 / 长篇深度 | (可选) |
+按文章气质分类挑选,不确定就用 main 默认的 `refined-blue`:
+
+| 类别 | 推荐主题 |
+|---|---|
+| **AI / 产品 / 深度分析** | `refined-blue` **(main 默认)** · `business-navy` · `sage-premium` |
+| **技术 / SDK / 工程** | `minimal-mono` **(tech 默认)** · `minimal-bw` · `academic-paper` · `cyber-neon` |
+| **新闻 / 热点 / 速读** | `news-bold` · `warm-editorial` |
+| **人文 / 随笔 / 文化** | `ink-wash` · `elegant-ink` · `magazine-grid` |
+| **生活 / 美食 / 旅行** | `warm-orange` · `mint-fresh` · `sunset-coral` |
+| **时尚 / 美妆 / 情感** | `girly-pink` · `sunset-coral` |
+
+逐套视觉简介:
+
+| 主题 | 视觉 | 默认绑定 |
+|---|---|---|
+| `refined-blue` | 蓝调极简 + 精致层次 / 数字标号 / 渐变高亮 | **main**(刷屏AI) |
+| `minimal-mono` | 极简黑白 + 等宽字,工程师风 | **tech**(蒜是哪根葱) |
+| `minimal-bw` | 瑞士现代主义 · Helvetica,只用粗细 / 留白做层级 | (可选) |
+| `academic-paper` | 论文格式 + 衬线正字,章节编号式层级 | (可选) |
+| `business-navy` | 深蓝 + 金色点缀,权威克制的金融感 | (可选) |
+| `cyber-neon` | 深色底 + 霓虹青紫,赛博科技感 | (可选) |
+| `news-bold` | 红黑强对比 + 快节奏,信息密度高 | (可选) |
+| `warm-editorial` | 栗色暖调,衬线杂志风 | (可选) |
+| `ink-wash` | 米黄纸 + 朱砂宋体,中式留白美学 | (可选) |
+| `elegant-ink` | 墨黑 + 朱砂红,衬线现代宋体 | (可选) |
+| `magazine-grid` | 衬线大标题 + 大留白,杂志内页感 | (可选) |
+| `warm-orange` | 暖橙生活号,亲切日常感 | (可选) |
+| `mint-fresh` | 薄荷绿 + 圆角卡片,轻盈透气 | (可选) |
+| `sunset-coral` | 夕阳珊瑚,暖橙 + 奶白 | (可选) |
+| `sage-premium` | 鼠尾草墨绿,克制专业 | (可选) |
+| `girly-pink` | 粉紫渐变 + 可爱风,少女向 | (可选) |
 
 **通过主题名选择**:在 `accounts.yaml` 里修改对应账号的 `theme:` 字段即可切换。例如把 main 账号换到 `sunset-coral`:
 
@@ -369,14 +392,15 @@ accounts:
 排版系统支持 7 种行内标色(见阶段三的标记表),转换器会把自定义标记替换为内联 style:
 
 - `**加粗**`:主强调,深色 + 黄色下划线
-- `==黄==` / `++蓝==` / `%%粉==` / `&&绿==`:4 种背景高亮
+- `==黄==` / `++蓝++` / `%%粉%%` / `&&绿&&`:4 种背景高亮
 - `!!红!!` / `@@蓝@@` / `^^橙^^`:3 种字体强调色
 
-**style_config.json 是向后兼容的默认**,实际主题文件在 `assets/themes/*.json`。
+实际主题文件在 `assets/themes/*.json`,内部结构:`styles`(标签样式)+ `highlights`(行内标色)+ `section_divider_text`(分节符字符)+ `list_style`(序号 / 项目符号样式)。
 
 #### 自定义
 
 要改配色 / 字号 / 间距,编辑 `assets/themes/<theme>.json`,修改 `styles` 或 `highlights` 字段。
+要改有序列表的序号样式(如阿拉伯数字 / 中文 / 罗马数字 / 圆圈数字),改 `list_style.num_formatter`(可选 `decimal` / `padded` / `chinese` / `roman_upper` / `roman_lower` / `circled` / `circled_filled`)。
 
 ---
 

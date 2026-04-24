@@ -87,6 +87,18 @@ DEFAULT_HIGHLIGHTS = {
 
 DEFAULT_SECTION_DIVIDER_TEXT = "● ● ●"
 
+# 默认 list_style:让旧主题(没写 list_style 的)也能用统一的渲染逻辑。
+# 渲染器会先把数字/项目符号包成 <span>,样式跟着主题走;旧主题的 ol/ul/li
+# 还在,只是多出来一个 prefix span,视觉影响极小。
+DEFAULT_LIST_STYLE = {
+    "num_container": "color: #4a6cf7; font-weight: 700; margin-right: 8px;",
+    "num_prefix": "",
+    "num_suffix": ".",
+    "num_formatter": "decimal",
+    "bullet_container": "color: #4a6cf7; margin-right: 8px;",
+    "bullet_char": "●",
+}
+
 
 def _themes_dir():
     return Path(__file__).parent.parent / "assets" / "themes"
@@ -102,19 +114,24 @@ def list_themes():
 
 def load_theme(theme_name=None, style_path=None):
     """
-    加载一个完整主题(styles + highlights + section_divider_text)。
+    加载一个完整主题(styles + highlights + section_divider_text + list_style)。
 
     参数优先级:
       1. style_path(显式指定 JSON 文件)
       2. theme_name(查 assets/themes/<name>.json)
-      3. 内置 DEFAULT_STYLES / DEFAULT_HIGHLIGHTS
+      3. 内置 DEFAULT_STYLES / DEFAULT_HIGHLIGHTS / DEFAULT_LIST_STYLE
 
     返回:
-        (styles: dict, highlights: dict, divider_text: str)
+        (styles: dict, highlights: dict, divider_text: str, list_style: dict)
+
+    注:为向后兼容,如果调用方按 3 元组解包(styles, highlights, divider),
+    多出来的 list_style 会被忽略。convert_markdown_to_wechat_html 自身
+    会从默认值兜底,没传 list_style 不会出问题。
     """
     styles = DEFAULT_STYLES.copy()
     highlights = DEFAULT_HIGHLIGHTS.copy()
     divider_text = DEFAULT_SECTION_DIVIDER_TEXT
+    list_style = DEFAULT_LIST_STYLE.copy()
 
     candidates = []
     if style_path:
@@ -131,17 +148,38 @@ def load_theme(theme_name=None, style_path=None):
                 highlights.update(data.get("highlights", {}))
                 if data.get("section_divider_text"):
                     divider_text = data["section_divider_text"]
+                if data.get("list_style"):
+                    list_style.update(data["list_style"])
                 break
             except (json.JSONDecodeError, KeyError):
                 continue
 
-    return styles, highlights, divider_text
+    return styles, highlights, divider_text, list_style
 
 
 def load_styles(style_path=None):
     """向后兼容:老接口只返回 styles。"""
-    styles, _, _ = load_theme(style_path=style_path)
+    styles, _, _, _ = load_theme(style_path=style_path)
     return styles
+
+
+# ---------- 数字格式化(给 list_style.num_formatter 用) ----------
+_CN = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
+_ROMAN_U = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ", "Ⅸ", "Ⅹ"]
+_ROMAN_L = ["", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"]
+_CIRCLED = ["", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+_CIRCLED_FILLED = ["", "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾", "❿"]
+
+
+def _format_num(n: int, fmt: str) -> str:
+    if fmt == "padded":         return f"{n:02d}"
+    if fmt == "decimal":        return str(n)
+    if fmt == "chinese":        return _CN[n] if 0 < n < len(_CN) else str(n)
+    if fmt == "roman_upper":    return _ROMAN_U[n] if 0 < n < len(_ROMAN_U) else str(n)
+    if fmt == "roman_lower":    return _ROMAN_L[n] if 0 < n < len(_ROMAN_L) else str(n)
+    if fmt == "circled":        return _CIRCLED[n] if 0 < n < len(_CIRCLED) else str(n)
+    if fmt == "circled_filled": return _CIRCLED_FILLED[n] if 0 < n < len(_CIRCLED_FILLED) else str(n)
+    return str(n)
 
 
 # ============================================================
@@ -161,7 +199,9 @@ INLINE_MARKS = [
 ]
 
 
-def convert_markdown_to_wechat_html(markdown_text, styles=None, highlights=None, divider_text=None):
+def convert_markdown_to_wechat_html(
+    markdown_text, styles=None, highlights=None, divider_text=None, list_style=None
+):
     """
     将 Markdown 文本转换为微信公众号兼容的 HTML。
 
@@ -170,6 +210,7 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None, highlights=None,
         styles: 标签样式字典(默认使用内置)
         highlights: 行内标记样式字典(默认使用内置)
         divider_text: 分节符文本
+        list_style: 主题的 list_style 块,控制 ol/ul 的序号 / 项目符号样式
 
     Returns:
         str: 微信兼容的 HTML 字符串
@@ -180,6 +221,8 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None, highlights=None,
         highlights = DEFAULT_HIGHLIGHTS.copy()
     if divider_text is None:
         divider_text = DEFAULT_SECTION_DIVIDER_TEXT
+    if list_style is None:
+        list_style = DEFAULT_LIST_STYLE.copy()
 
     lines = markdown_text.split("\n")
     html_parts = []
@@ -195,19 +238,32 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None, highlights=None,
     h1_seen = False
     prev_was_h2 = False
 
+    # ---- list_style 渲染辅助 ----
+    def _num_token(n: int) -> str:
+        prefix = list_style.get("num_prefix", "")
+        suffix = list_style.get("num_suffix", "")
+        fmt = list_style.get("num_formatter", "decimal")
+        container = list_style.get("num_container", "")
+        return f'<span style="{container}">{prefix}{_format_num(n, fmt)}{suffix}</span>'
+
+    def _bullet_token() -> str:
+        glyph = list_style.get("bullet_char", "•") or "&nbsp;"
+        container = list_style.get("bullet_container", "")
+        return f'<span style="{container}">{glyph}</span>'
+
     def flush_list():
         nonlocal in_list, list_items, list_type
         if in_list and list_items:
             tag = list_type or "ul"
             if tag == "ul":
                 items_html = "\n".join(
-                    f'<li style="{styles["li"]}"><span style="color: #4a6cf7; margin-right: 8px;">●</span>{item}</li>'
+                    f'<li style="{styles["li"]}">{_bullet_token()}{item}</li>'
                     for item in list_items
                 )
             else:
                 items_html = "\n".join(
-                    f'<li style="{styles["li"]}">{item}</li>'
-                    for item in list_items
+                    f'<li style="{styles["li"]}">{_num_token(n)}{item}</li>'
+                    for n, item in enumerate(list_items, 1)
                 )
             html_parts.append(f'<{tag} style="{styles[tag]}">{items_html}</{tag}>')
             list_items = []
@@ -355,8 +411,9 @@ def convert_markdown_to_wechat_html(markdown_text, styles=None, highlights=None,
         else:
             flush_blockquote()
 
-        # 自定义分节符: 单独一行的 `===` 或 `~~~` (与代码块 ``` 区分)
-        if re.match(r'^(={3,}|~{3,})$', stripped):
+        # 自定义分节符: 单独一行的 `===` / `~~~` / `[SEC]`
+        # `[SEC]` 是新主题包(2026)推荐写法,等价于旧的 `===`。
+        if re.match(r'^(={3,}|~{3,})$', stripped) or stripped == "[SEC]":
             flush_list()
             html_parts.append(
                 f'<p style="{styles.get("section_divider", "")}">{divider_text}</p>'
@@ -484,10 +541,12 @@ if __name__ == "__main__":
     with open(args.input, "r", encoding="utf-8") as f:
         md_text = f.read()
 
-    styles, highlights, divider_text = load_theme(
+    styles, highlights, divider_text, list_style = load_theme(
         theme_name=args.theme, style_path=args.style
     )
-    html = convert_markdown_to_wechat_html(md_text, styles, highlights, divider_text)
+    html = convert_markdown_to_wechat_html(
+        md_text, styles, highlights, divider_text, list_style
+    )
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:

@@ -296,10 +296,12 @@ def publish_from_markdown(
 
     # 6. 转换HTML
     print("\n[步骤3] 转换HTML排版...")
-    styles, highlights, divider_text = load_theme(theme_name=theme, style_path=style_path)
+    styles, highlights, divider_text, list_style = load_theme(
+        theme_name=theme, style_path=style_path
+    )
     print(f"  主题: {theme or '(默认)'}")
     html_content = convert_markdown_to_wechat_html(
-        processed_md, styles, highlights, divider_text
+        processed_md, styles, highlights, divider_text, list_style
     )
     print(f"  HTML生成完成 ({len(html_content)} 字符)")
 

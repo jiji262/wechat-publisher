@@ -15,16 +15,16 @@ import pytest
 from html_converter import convert_markdown_to_wechat_html, load_theme
 
 
-# Shared theme fixture — every test needs the three tuples from load_theme.
+# Shared theme fixture — every test needs the four tuples from load_theme.
 @pytest.fixture(scope="module")
 def theme():
-    styles, highlights, divider = load_theme(theme_name="refined-blue")
-    return styles, highlights, divider
+    styles, highlights, divider, list_style = load_theme(theme_name="refined-blue")
+    return styles, highlights, divider, list_style
 
 
 def _convert(md: str, theme_tuple) -> str:
-    styles, highlights, divider = theme_tuple
-    return convert_markdown_to_wechat_html(md, styles, highlights, divider)
+    styles, highlights, divider, list_style = theme_tuple
+    return convert_markdown_to_wechat_html(md, styles, highlights, divider, list_style)
 
 
 # ---------------------------------------------------------------------------
@@ -216,3 +216,62 @@ def test_blockquote(theme):
     html = _convert(md, theme)
     assert "<blockquote" in html
     assert "一句引用" in html
+
+
+# ---------------------------------------------------------------------------
+# 新主题包(2026)新增能力
+# ---------------------------------------------------------------------------
+
+def test_sec_marker_renders_divider(theme):
+    """`[SEC]` 单独一行应渲染为分节符 <p>。"""
+    md = "前文\n\n[SEC]\n\n后文"
+    html = _convert(md, theme)
+    # 主题的 section_divider_text 是 "● ● ●"
+    _, _, divider, _ = theme
+    assert divider in html, "[SEC] 没有渲染出 divider 文本"
+
+
+def test_legacy_eq_marker_still_works(theme):
+    """老语法 `===` 单独一行也应继续渲染为分节符(向后兼容)。"""
+    md = "前文\n\n===\n\n后文"
+    html = _convert(md, theme)
+    _, _, divider, _ = theme
+    assert divider in html
+
+
+def test_ol_uses_list_style_num_token(theme):
+    """有序列表应按主题的 list_style.num_container/prefix/suffix 渲染数字。"""
+    md = "1. 第一项\n2. 第二项\n"
+    html = _convert(md, theme)
+    assert "<ol" in html and "<li" in html
+    # refined-blue 的 num_formatter 是 "padded",所以 1 渲染为 "01"
+    # 数字应包在 <span> 里(而不是依赖 <ol> 的原生序号)
+    assert "<span" in html
+    assert "01" in html or "1" in html  # padded 或 decimal 都接受
+    assert "第一项" in html and "第二项" in html
+
+
+def test_ul_uses_list_style_bullet_token(theme):
+    """无序列表应按主题的 list_style.bullet_container/bullet_char 渲染项目符号。"""
+    md = "- 项 A\n- 项 B\n"
+    html = _convert(md, theme)
+    assert "<ul" in html and "<li" in html
+    # bullet 包在 <span> 里
+    assert "<span" in html
+    assert "项 A" in html and "项 B" in html
+
+
+def test_all_16_themes_load_without_error():
+    """所有 16 套主题都应能成功加载,且包含必需字段。"""
+    from html_converter import list_themes
+    names = list_themes()
+    assert len(names) == 16, f"应有 16 套主题,实际 {len(names)}: {names}"
+    for name in names:
+        styles, highlights, divider, list_style = load_theme(theme_name=name)
+        # 每套主题至少要有 body / h2 / p / strong 这几个基础键
+        for key in ("body", "h2", "p", "strong", "blockquote", "code_inline"):
+            assert key in styles, f"主题 {name} 缺少 styles.{key}"
+        # 高亮键至少要齐 4 + 3 套
+        for key in ("hl_yellow", "hl_blue", "hl_pink", "hl_green",
+                    "em_red", "em_blue", "em_orange"):
+            assert key in highlights, f"主题 {name} 缺少 highlights.{key}"

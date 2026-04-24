@@ -1,0 +1,58 @@
+{
+  "theme_name": "cyber-neon",
+  "description": "赛博科技 - 深色底 + 霓虹青紫,未来科技感,适合黑客 / 赛博朋克 / 前沿科技报道",
+  "styles": {
+    "body": "font-family: 'JetBrains Mono', 'Menlo', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #d8e6f0; line-height: 1.85; letter-spacing: 0.4px; word-spacing: 1.5px; padding: 20px 16px; background: #0a0e1a;",
+    "h1": "font-size: 22px; font-weight: 800; color: #00e5d0; text-align: left; margin: 34px 0 22px; padding: 0 0 12px 0; border-bottom: 1px solid #00e5d0; letter-spacing: 2px; line-height: 1.4; text-transform: uppercase;",
+    "h2": "font-size: 16.5px; font-weight: 800; color: #00e5d0; margin: 40px 0 18px; padding: 8px 14px; background: rgba(0,229,208,0.08); border-left: 3px solid #00e5d0; line-height: 1.5; letter-spacing: 1.5px; text-transform: uppercase;",
+    "h3": "font-size: 15px; font-weight: 700; color: #c085ff; margin: 28px 0 12px; padding: 0; letter-spacing: 1px;",
+    "p": "margin: 16px 0; text-indent: 0; text-align: justify; color: #c8d4df; line-height: 1.9;",
+    "blockquote": "margin: 24px 0; padding: 16px 22px; background: rgba(192,133,255,0.06); border-left: 3px solid #c085ff; color: #d8caff; font-size: 14.5px; border-radius: 0; line-height: 1.85; letter-spacing: 0.3px;",
+    "img": "max-width: 100%; height: auto; border-radius: 2px; margin: 24px auto; display: block; border: 1px solid #00e5d0; box-shadow: 0 0 20px rgba(0,229,208,0.15);",
+    "strong": "color: #00e5d0; font-weight: 800;",
+    "em": "font-style: italic; color: #a098c0;",
+    "code_inline": "background: #12182a; color: #00e5d0; padding: 2px 7px; border-radius: 2px; font-size: 13px; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace; border: 1px solid #1e2a4a;",
+    "code_block": "background: #060912; color: #d8e6f0; padding: 16px 18px; border-radius: 4px; font-size: 12.5px; line-height: 1.65; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace; overflow-x: auto; white-space: pre; margin: 24px 0; border: 1px solid #1e2a4a; -webkit-overflow-scrolling: touch; -moz-tab-size: 2; tab-size: 2; font-variant-ligatures: none; -webkit-font-smoothing: antialiased;",
+    "ul": "margin: 18px 0; padding-left: 0; list-style: none;",
+    "ol": "margin: 18px 0; padding-left: 0; list-style: none; counter-reset: list;",
+    "li": "margin: 10px 0; line-height: 1.85; color: #c8d4df; font-weight: 400;",
+    "li_bullet": "color: #00e5d0; font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; display: inline-block; min-width: 16px; margin-right: 8px; text-align: left;",
+    "li_bullet_char": "▸",
+    "li_number": "color: #00e5d0; font-weight: 700; font-size: 13px; min-width: 22px; font-family: 'JetBrains Mono', monospace; display: inline-block; margin-right: 10px;",
+    "hr": "border: none; height: 1px; background: linear-gradient(to right, transparent, #00e5d0, #c085ff, transparent); margin: 38px 0;",
+    "a": "color: #00e5d0; text-decoration: none; border-bottom: 1px solid rgba(0,229,208,0.5);",
+    "table": "width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 13.5px; border: 1px solid #1e2a4a; table-layout: fixed; word-break: break-word;",
+    "th": "background: #12182a; color: #00e5d0; padding: 10px 8px; text-align: left; font-weight: 700; font-size: 12.5px; letter-spacing: 1.5px; text-transform: uppercase; border-bottom: 1px solid #00e5d0; word-break: break-word; line-height: 1.5;",
+    "td": "padding: 10px 8px; border-bottom: 1px solid #1e2a4a; color: #c8d4df; font-size: 13px; word-break: break-word; line-height: 1.55;",
+    "caption": "font-size: 12px; color: #6a7a8a; text-align: center; margin-top: 10px; letter-spacing: 1px;",
+    "section_divider": "text-align: center; color: #00e5d0; letter-spacing: 16px; font-size: 12px; margin: 38px 0; user-select: none; opacity: 0.6; font-family: 'JetBrains Mono', monospace;"
+  },
+  "highlights": {
+    "hl_yellow": "background: rgba(255,215,80,0.18); color: #ffd750; padding: 1px 4px; border-radius: 2px; font-weight: 600;",
+    "hl_blue": "background: rgba(0,229,208,0.15); color: #00e5d0; padding: 1px 5px; border-radius: 2px; font-weight: 600;",
+    "hl_pink": "background: rgba(255,80,180,0.15); color: #ff5bbc; padding: 1px 5px; border-radius: 2px; font-weight: 600;",
+    "hl_green": "background: rgba(80,255,150,0.15); color: #50ff96; padding: 1px 5px; border-radius: 2px; font-weight: 600;",
+    "em_red": "color: #ff5b7a; font-weight: 700;",
+    "em_blue": "color: #00e5d0; font-weight: 700;",
+    "em_orange": "color: #ffab50; font-weight: 700;"
+  },
+  "section_divider_text": "> > >",
+  "code_colors": {
+    "kw": "color: #ff6ac1; font-weight: 600;",
+    "str": "color: #a8e6a0;",
+    "num": "color: #ffc870;",
+    "fn": "color: #00e5d0;",
+    "cls": "color: #c085ff;",
+    "comm": "color: #5a6a88; font-style: italic;",
+    "punct": "color: #8ea0b8;"
+  },
+  "list_style": {
+    "label": "A · 终端前缀",
+    "num_container": "display: inline-block; color: #00e5d0; font-family: 'JetBrains Mono','Menlo',monospace; font-weight: 700; font-size: 12.5px; margin-right: 10px;",
+    "num_prefix": "[",
+    "num_suffix": "]",
+    "num_formatter": "padded",
+    "bullet_container": "display: inline-block; color: #00e5d0; font-family: 'JetBrains Mono','Menlo',monospace; font-weight: 700; font-size: 13px; margin-right: 10px;",
+    "bullet_char": "▸"
+  }
+}
