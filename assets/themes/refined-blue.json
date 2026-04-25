@@ -4,12 +4,12 @@
   "styles": {
     "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #242832; line-height: 1.8; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 16px; background: #ffffff;",
     "h1": "font-size: 23px; font-weight: 800; color: #0b1530; text-align: left; margin: 34px 0 20px; padding: 0 0 12px 0; border-bottom: 2px solid #0b1530; letter-spacing: 0.3px; line-height: 1.4;",
-    "h2": "font-size: 18px; font-weight: 700; color: #0b1530; margin: 40px 0 18px; padding: 10px 0 10px 14px; border-left: 4px solid #2e5bff; background: linear-gradient(90deg, #eef2ff 0%, #ffffff 70%); border-radius: 0 6px 6px 0; line-height: 1.5; letter-spacing: 0.3px;",
+    "h2": "font-size: 18px; font-weight: 700; color: #0b1530; margin: 40px 0 18px; padding: 10px 16px 10px 14px; border-left: 4px solid #2e5bff; background: linear-gradient(90deg, #eef2ff 0%, #ffffff 70%); border-radius: 0 6px 6px 0; line-height: 1.5; letter-spacing: 0.3px;",
     "h3": "font-size: 16px; font-weight: 700; color: #1a2240; margin: 28px 0 12px; padding: 0 0 6px 0; border-bottom: 1px dashed #c7d2fe; letter-spacing: 0.3px;",
     "p": "margin: 16px 0; text-indent: 0; text-align: justify; color: #242832; line-height: 1.85;",
     "blockquote": "margin: 24px 0; padding: 18px 22px; background: #f4f6fc; border-left: 3px solid #2e5bff; color: #3a4463; font-size: 14.5px; border-radius: 0 10px 10px 0; line-height: 1.85; letter-spacing: 0.3px;",
     "img": "max-width: 100%; height: auto; border-radius: 8px; margin: 24px auto; display: block; box-shadow: 0 6px 20px rgba(11,21,48,0.08); border: 1px solid #eef2ff;",
-    "strong": "color: #0b1530; font-weight: 800; background: linear-gradient(180deg, transparent 62%, #fff18a 62%, #fff18a 95%, transparent 95%); padding: 0 2px;",
+    "strong": "color: #0b1530; font-weight: 800; background: linear-gradient(180deg, transparent 62%, #fff18a 62%, #fff18a 95%, transparent 95%); padding: 1px 4px;",
     "em": "font-style: italic; color: #5a6577;",
     "code_inline": "background: #eef2ff; color: #2e3a8a; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', 'SF Mono', monospace; border: 1px solid #dbe4ff;",
     "code_block": "background: #0f1729; color: #e1e7ff; padding: 16px 18px; border-radius: 10px; font-size: 12.5px; line-height: 1.65; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', 'SF Mono', monospace; overflow-x: auto; white-space: pre; margin: 24px 0; border: 1px solid #1e2a4a; -webkit-overflow-scrolling: touch; -moz-tab-size: 2; tab-size: 2; font-variant-ligatures: none; -webkit-font-smoothing: antialiased;",
@@ -28,10 +28,10 @@
     "section_divider": "text-align: center; color: #c7d2fe; letter-spacing: 14px; font-size: 11px; margin: 36px 0; user-select: none;"
   },
   "highlights": {
-    "hl_yellow": "background: linear-gradient(180deg, transparent 55%, #fff18a 55%); color: #242832; padding: 0 3px; font-weight: 600;",
-    "hl_blue": "background: #dbe4ff; color: #1e2a8a; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
-    "hl_pink": "background: #ffe0ec; color: #a6115a; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
-    "hl_green": "background: #d7f5e2; color: #167a44; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
+    "hl_yellow": "background: linear-gradient(180deg, transparent 55%, #fff18a 55%); color: #242832; padding: 0 5px; font-weight: 600;",
+    "hl_blue": "background: #dbe4ff; color: #1e2a8a; padding: 2px 7px; border-radius: 3px; font-weight: 500;",
+    "hl_pink": "background: #ffe0ec; color: #a6115a; padding: 2px 7px; border-radius: 3px; font-weight: 500;",
+    "hl_green": "background: #d7f5e2; color: #167a44; padding: 2px 7px; border-radius: 3px; font-weight: 500;",
     "em_red": "color: #c43a30; font-weight: 700;",
     "em_blue": "color: #2e5bff; font-weight: 700;",
     "em_orange": "color: #ea7c1c; font-weight: 700;"

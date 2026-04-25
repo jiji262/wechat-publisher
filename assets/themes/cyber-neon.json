@@ -28,10 +28,10 @@
     "section_divider": "text-align: center; color: #00e5d0; letter-spacing: 16px; font-size: 12px; margin: 38px 0; user-select: none; opacity: 0.6; font-family: 'JetBrains Mono', monospace;"
   },
   "highlights": {
-    "hl_yellow": "background: rgba(255,215,80,0.18); color: #ffd750; padding: 1px 4px; border-radius: 2px; font-weight: 600;",
-    "hl_blue": "background: rgba(0,229,208,0.15); color: #00e5d0; padding: 1px 5px; border-radius: 2px; font-weight: 600;",
-    "hl_pink": "background: rgba(255,80,180,0.15); color: #ff5bbc; padding: 1px 5px; border-radius: 2px; font-weight: 600;",
-    "hl_green": "background: rgba(80,255,150,0.15); color: #50ff96; padding: 1px 5px; border-radius: 2px; font-weight: 600;",
+    "hl_yellow": "background: rgba(255,215,80,0.18); color: #ffd750; padding: 2px 6px; border-radius: 2px; font-weight: 600;",
+    "hl_blue": "background: rgba(0,229,208,0.15); color: #00e5d0; padding: 2px 7px; border-radius: 2px; font-weight: 600;",
+    "hl_pink": "background: rgba(255,80,180,0.15); color: #ff5bbc; padding: 2px 7px; border-radius: 2px; font-weight: 600;",
+    "hl_green": "background: rgba(80,255,150,0.15); color: #50ff96; padding: 2px 7px; border-radius: 2px; font-weight: 600;",
     "em_red": "color: #ff5b7a; font-weight: 700;",
     "em_blue": "color: #00e5d0; font-weight: 700;",
     "em_orange": "color: #ffab50; font-weight: 700;"

@@ -28,10 +28,10 @@
     "section_divider": "text-align: center; color: #c9a74a; letter-spacing: 16px; font-size: 12px; margin: 38px 0; user-select: none;"
   },
   "highlights": {
-    "hl_yellow": "background: linear-gradient(180deg, transparent 58%, #ffe79a 58%); color: #0f1a33; padding: 0 3px; font-weight: 600;",
-    "hl_blue": "background: #dee7f5; color: #0b2445; padding: 1px 5px; border-radius: 2px; font-weight: 500;",
-    "hl_pink": "background: #f5dfe6; color: #7a1e3a; padding: 1px 5px; border-radius: 2px; font-weight: 500;",
-    "hl_green": "background: #dfe9dc; color: #2d4a2f; padding: 1px 5px; border-radius: 2px; font-weight: 500;",
+    "hl_yellow": "background: linear-gradient(180deg, transparent 58%, #ffe79a 58%); color: #0f1a33; padding: 0 5px; font-weight: 600;",
+    "hl_blue": "background: #dee7f5; color: #0b2445; padding: 2px 7px; border-radius: 2px; font-weight: 500;",
+    "hl_pink": "background: #f5dfe6; color: #7a1e3a; padding: 2px 7px; border-radius: 2px; font-weight: 500;",
+    "hl_green": "background: #dfe9dc; color: #2d4a2f; padding: 2px 7px; border-radius: 2px; font-weight: 500;",
     "em_red": "color: #a02a2a; font-weight: 700;",
     "em_blue": "color: #1a4480; font-weight: 700;",
     "em_orange": "color: #a8800e; font-weight: 700;"

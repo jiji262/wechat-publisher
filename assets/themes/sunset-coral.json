@@ -9,7 +9,7 @@
     "p": "margin: 16px 0; text-indent: 0; text-align: justify; color: #2b1a10; line-height: 1.85;",
     "blockquote": "margin: 24px 0; padding: 18px 22px; background: #fff0e6; border-left: 4px solid #ff6b4a; color: #5a3722; font-size: 14.5px; border-radius: 0 8px 8px 0; line-height: 1.85; letter-spacing: 0.3px;",
     "img": "max-width: 100%; height: auto; border-radius: 10px; margin: 24px auto; display: block; box-shadow: 0 8px 24px rgba(255,107,74,0.12); border: 1px solid #ffe0d0;",
-    "strong": "color: #c43a1a; font-weight: 800; background: linear-gradient(180deg, transparent 60%, #ffdbaa 60%, #ffdbaa 95%, transparent 95%); padding: 0 2px;",
+    "strong": "color: #c43a1a; font-weight: 800; background: linear-gradient(180deg, transparent 60%, #ffdbaa 60%, #ffdbaa 95%, transparent 95%); padding: 1px 4px;",
     "em": "font-style: italic; color: #8a5738;",
     "code_inline": "background: #fff0e6; color: #c43a1a; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', 'SF Mono', monospace; border: 1px solid #ffd4be;",
     "code_block": "background: #2b1a10; color: #ffe8dd; padding: 16px 18px; border-radius: 10px; font-size: 12.5px; line-height: 1.65; font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace; overflow-x: auto; white-space: pre; margin: 24px 0; -webkit-overflow-scrolling: touch; -moz-tab-size: 2; tab-size: 2; font-variant-ligatures: none; -webkit-font-smoothing: antialiased;",
@@ -28,10 +28,10 @@
     "section_divider": "text-align: center; color: #ff6b4a; letter-spacing: 14px; font-size: 13px; margin: 36px 0; user-select: none; opacity: 0.7;"
   },
   "highlights": {
-    "hl_yellow": "background: linear-gradient(180deg, transparent 55%, #ffe8a8 55%); color: #2b1a10; padding: 0 3px; font-weight: 600;",
-    "hl_blue": "background: #dbe4ff; color: #1e2a8a; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
-    "hl_pink": "background: #ffd4e0; color: #a81f5a; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
-    "hl_green": "background: #d7f5e2; color: #167a44; padding: 1px 5px; border-radius: 3px; font-weight: 500;",
+    "hl_yellow": "background: linear-gradient(180deg, transparent 55%, #ffe8a8 55%); color: #2b1a10; padding: 0 5px; font-weight: 600;",
+    "hl_blue": "background: #dbe4ff; color: #1e2a8a; padding: 2px 7px; border-radius: 3px; font-weight: 500;",
+    "hl_pink": "background: #ffd4e0; color: #a81f5a; padding: 2px 7px; border-radius: 3px; font-weight: 500;",
+    "hl_green": "background: #d7f5e2; color: #167a44; padding: 2px 7px; border-radius: 3px; font-weight: 500;",
     "em_red": "color: #c43a1a; font-weight: 700;",
     "em_blue": "color: #2e5bff; font-weight: 700;",
     "em_orange": "color: #ff6b4a; font-weight: 800;"
