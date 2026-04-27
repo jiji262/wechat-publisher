@@ -2,7 +2,7 @@
   "theme_name": "sage-premium",
   "description": "鼠尾草墨绿 - 深绿 + 象牙白,克制专业的自然色,适合数据分析 / 研究报告 / 长篇深度内容",
   "styles": {
-    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #1e2a21; line-height: 1.85; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 16px; background: #f7f5ee;",
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #1e2a21; line-height: 1.85; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 28px; background: #f7f5ee;",
     "h1": "font-size: 23px; font-weight: 800; color: #1e2a21; text-align: left; margin: 34px 0 22px; padding: 0 0 14px 0; border-bottom: 2px solid #1e2a21; letter-spacing: 0.3px; line-height: 1.4;",
     "h2": "font-size: 18px; font-weight: 700; color: #1e2a21; margin: 40px 0 18px; padding: 10px 16px 10px 14px; border-left: 4px solid #5c7a65; background: linear-gradient(90deg, #e8ede3 0%, transparent 80%); border-radius: 0 4px 4px 0; line-height: 1.5; letter-spacing: 0.3px;",
     "h3": "font-size: 16px; font-weight: 700; color: #3a4f3f; margin: 28px 0 12px; padding: 0 0 6px 0; border-bottom: 1px dashed #b8c5bb; letter-spacing: 0.3px;",

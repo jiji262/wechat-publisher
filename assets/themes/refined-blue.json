@@ -2,7 +2,7 @@
   "theme_name": "refined-blue",
   "description": "精致蓝调 - 蓝调极简 + 精致的层次 / 数字标号 / 渐变高亮,适合 AI / 产品 / 深度分析(main 号默认)",
   "styles": {
-    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #242832; line-height: 1.8; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 16px; background: #ffffff;",
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #242832; line-height: 1.8; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 28px; background: #ffffff;",
     "h1": "font-size: 23px; font-weight: 800; color: #0b1530; text-align: left; margin: 34px 0 20px; padding: 0 0 12px 0; border-bottom: 2px solid #0b1530; letter-spacing: 0.3px; line-height: 1.4;",
     "h2": "font-size: 18px; font-weight: 700; color: #0b1530; margin: 40px 0 18px; padding: 10px 16px 10px 14px; border-left: 4px solid #2e5bff; background: linear-gradient(90deg, #eef2ff 0%, #ffffff 70%); border-radius: 0 6px 6px 0; line-height: 1.5; letter-spacing: 0.3px;",
     "h3": "font-size: 16px; font-weight: 700; color: #1a2240; margin: 28px 0 12px; padding: 0 0 6px 0; border-bottom: 1px dashed #c7d2fe; letter-spacing: 0.3px;",
