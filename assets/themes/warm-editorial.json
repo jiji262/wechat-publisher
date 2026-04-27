@@ -22,7 +22,7 @@
     "hr": "border: none; height: 1px; background: linear-gradient(to right, transparent, #c9a27d, transparent); margin: 40px 0;",
     "a": "color: #8b4513; text-decoration: none; border-bottom: 1px solid rgba(139,69,19,0.4);",
     "table": "width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; border: 1px solid #e8d9c0; table-layout: fixed; word-break: break-word;",
-    "th": "background: #c9a27d; color: #2d1f15; padding: 10px 8px; text-align: left; font-weight: 700; font-size: 12.5px; word-break: break-word; line-height: 1.5;",
+    "th": "background: #c9a27d; color: #2d1f15; padding: 10px 12px; text-align: left; font-weight: 700; font-size: 12.5px; word-break: break-word; line-height: 1.5;",
     "td": "padding: 10px 8px; border-bottom: 1px solid #f0e4d0; color: #3a2e26; font-size: 13px; word-break: break-word; line-height: 1.55;",
     "caption": "font-size: 12.5px; color: #9c8877; text-align: center; margin-top: 12px; letter-spacing: 0.5px; font-style: italic;",
     "section_divider": "text-align: center; color: #c9a27d; letter-spacing: 12px; font-size: 14px; margin: 36px 0; user-select: none;"

@@ -28,7 +28,7 @@
     "section_divider": "text-align: center; color: #a0330f; letter-spacing: 8px; font-size: 18px; margin: 46px 0; user-select: none; font-style: italic; font-family: Georgia, serif;"
   },
   "highlights": {
-    "hl_yellow": "background: linear-gradient(180deg, transparent 60%, #f4e6a8 60%); color: #1f1a14; padding: 0 5px; font-weight: 600;",
+    "hl_yellow": "background: linear-gradient(180deg, transparent 60%, #f4e6a8 60%); color: #1f1a14; padding: 1px 6px; font-weight: 600;",
     "hl_blue": "background: #dde4ef; color: #2a3854; padding: 2px 7px; border-radius: 0; font-weight: 500;",
     "hl_pink": "background: #f5dcd4; color: #8a2a1a; padding: 2px 7px; border-radius: 0; font-weight: 500;",
     "hl_green": "background: #dde4cf; color: #3e4d22; padding: 2px 7px; border-radius: 0; font-weight: 500;",

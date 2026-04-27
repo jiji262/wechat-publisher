@@ -22,13 +22,13 @@
     "hr": "border: none; height: 2px; background: #1a1a1a; margin: 34px 0;",
     "a": "color: #d4231c; text-decoration: none; border-bottom: 1px solid #d4231c;",
     "table": "width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 13.5px; border: 2px solid #1a1a1a; table-layout: fixed; word-break: break-word;",
-    "th": "background: #1a1a1a; color: #ffffff; padding: 10px 8px; text-align: left; font-weight: 800; font-size: 12.5px; letter-spacing: 0.5px; border-bottom: 2px solid #d4231c; word-break: break-word; line-height: 1.5;",
+    "th": "background: #1a1a1a; color: #ffffff; padding: 10px 12px; text-align: left; font-weight: 800; font-size: 12.5px; letter-spacing: 0.5px; border-bottom: 2px solid #d4231c; word-break: break-word; line-height: 1.5;",
     "td": "padding: 10px 8px; border-bottom: 1px solid #e5e5e5; color: #1a1a1a; font-size: 13px; word-break: break-word; line-height: 1.55;",
     "caption": "font-size: 12px; color: #6a6a6a; text-align: center; margin-top: 10px; letter-spacing: 0.5px; text-transform: uppercase;",
     "section_divider": "text-align: center; color: #d4231c; letter-spacing: 8px; font-size: 13px; margin: 34px 0; user-select: none; font-weight: 800;"
   },
   "highlights": {
-    "hl_yellow": "background: #fff27a; color: #1a1a1a; padding: 2px 6px; border-radius: 0; font-weight: 600;",
+    "hl_yellow": "background: #fff27a; color: #1a1a1a; padding: 2px 7px; border-radius: 0; font-weight: 600;",
     "hl_blue": "background: #dde4ef; color: #1a2a4a; padding: 2px 7px; border-radius: 0; font-weight: 500;",
     "hl_pink": "background: #f7d8de; color: #a82a2a; padding: 2px 7px; border-radius: 0; font-weight: 500;",
     "hl_green": "background: #dfeedb; color: #2d4a2f; padding: 2px 7px; border-radius: 0; font-weight: 500;",

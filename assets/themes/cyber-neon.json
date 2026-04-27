@@ -22,13 +22,13 @@
     "hr": "border: none; height: 1px; background: linear-gradient(to right, transparent, #00e5d0, #c085ff, transparent); margin: 38px 0;",
     "a": "color: #00e5d0; text-decoration: none; border-bottom: 1px solid rgba(0,229,208,0.5);",
     "table": "width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 13.5px; border: 1px solid #1e2a4a; table-layout: fixed; word-break: break-word;",
-    "th": "background: #12182a; color: #00e5d0; padding: 10px 8px; text-align: left; font-weight: 700; font-size: 12.5px; letter-spacing: 1.5px; text-transform: uppercase; border-bottom: 1px solid #00e5d0; word-break: break-word; line-height: 1.5;",
+    "th": "background: #12182a; color: #00e5d0; padding: 10px 12px; text-align: left; font-weight: 700; font-size: 12.5px; letter-spacing: 1.5px; text-transform: uppercase; border-bottom: 1px solid #00e5d0; word-break: break-word; line-height: 1.5;",
     "td": "padding: 10px 8px; border-bottom: 1px solid #1e2a4a; color: #c8d4df; font-size: 13px; word-break: break-word; line-height: 1.55;",
     "caption": "font-size: 12px; color: #6a7a8a; text-align: center; margin-top: 10px; letter-spacing: 1px;",
     "section_divider": "text-align: center; color: #00e5d0; letter-spacing: 16px; font-size: 12px; margin: 38px 0; user-select: none; opacity: 0.6; font-family: 'JetBrains Mono', monospace;"
   },
   "highlights": {
-    "hl_yellow": "background: rgba(255,215,80,0.18); color: #ffd750; padding: 2px 6px; border-radius: 2px; font-weight: 600;",
+    "hl_yellow": "background: rgba(255,215,80,0.18); color: #ffd750; padding: 2px 7px; border-radius: 2px; font-weight: 600;",
     "hl_blue": "background: rgba(0,229,208,0.15); color: #00e5d0; padding: 2px 7px; border-radius: 2px; font-weight: 600;",
     "hl_pink": "background: rgba(255,80,180,0.15); color: #ff5bbc; padding: 2px 7px; border-radius: 2px; font-weight: 600;",
     "hl_green": "background: rgba(80,255,150,0.15); color: #50ff96; padding: 2px 7px; border-radius: 2px; font-weight: 600;",
