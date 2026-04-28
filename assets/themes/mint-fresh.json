@@ -2,7 +2,7 @@
   "theme_name": "mint-fresh",
   "description": "小清新薄荷 - 薄荷绿 + 圆角卡片,轻盈透气,适合日常 / 生活方式 / 轻话题",
   "styles": {
-    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #1f3a33; line-height: 1.85; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 28px; background: #f4faf7;",
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #1f3a33; line-height: 1.85; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 28px 36px; background: #f4faf7;",
     "h1": "font-size: 22px; font-weight: 800; color: #0f5a4a; text-align: left; margin: 34px 0 22px; padding: 16px 20px; background: #cfeadd; border-radius: 14px; letter-spacing: 0.3px; line-height: 1.5;",
     "h2": "font-size: 17.5px; font-weight: 700; color: #0f5a4a; margin: 38px 0 18px; padding: 8px 14px; background: #e4f3ec; border-radius: 10px; line-height: 1.5; letter-spacing: 0.3px; display: inline-block;",
     "h3": "font-size: 15.5px; font-weight: 700; color: #1f3a33; margin: 28px 0 12px; padding: 0 0 0 12px; border-left: 3px solid #4fb896; letter-spacing: 0.3px;",
