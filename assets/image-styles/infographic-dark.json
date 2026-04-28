@@ -1,0 +1,56 @@
+{
+  "style_name": "infographic-dark",
+  "display_name": "手绘信息图·深夜档案",
+  "description": "和 infographic-warm/blue 同一手绘水彩视觉语言(卡通机器人+男孩+多区块高密度),但换为近黑基底 + 霓虹青黄辅色,像夜间的实验室档案或档案馆深色卡片。适合前沿模型发布、协议规范、基建/安全话题。",
+  "suitable_for": [
+    "frontier-model-launch",
+    "protocol-spec",
+    "infra-deep-dive",
+    "security-topic",
+    "late-night-tech",
+    "cyber-archive"
+  ],
+  "newspic_ready": true,
+  "article_ready": true,
+  "canvas": {
+    "newspic_aspect": "9:16",
+    "newspic_size": "1080x1920",
+    "article_aspect": "16:9",
+    "article_size": "1440x810"
+  },
+  "palette": {
+    "background": "#151a2e",
+    "paper": "#1e2540",
+    "surface": "#2a3250",
+    "primary": "#fde38a",
+    "primary_dark": "#e8b94a",
+    "accent": "#22d3ee",
+    "secondary": "#a78bfa",
+    "secondary_alt": "#ff7b7b",
+    "secondary_warm": "#f5a623",
+    "text": "#f1ecd8",
+    "secondary_text": "#b8b3a0",
+    "divider": "#3a4466",
+    "terminal_bg": "#06090f",
+    "terminal_text": "#22d3ee"
+  },
+  "typography": {
+    "headline": "手写粗体 / 方正喵呜体 / ZCool KuaiLe,带厚重描边(亮黄/霓虹青色)",
+    "subtitle": "思源黑体 Heavy / PingFang SC Bold",
+    "body": "思源黑体 Regular / PingFang SC Regular",
+    "numbers": "圆润粗体数字",
+    "terminal": "JetBrains Mono / Menlo"
+  },
+  "mood": ["late-night", "frontier", "cyber", "mysterious", "information-dense", "illustrated"],
+  "characters": {
+    "robot": "白色/浅灰机身机器人,霓虹青色圆眼睛,夜间场景",
+    "boy": "深色帽衫男孩,棕色短发,手持发光笔记本/屏幕",
+    "usage": "两个主角贯穿,夜间/实验室场景,配合深色基调的神秘科幻感"
+  },
+  "prompt_template": {
+    "newspic_card": "Generate a highly-detailed, information-dense Chinese infographic card in **hand-drawn watercolor + ink illustration** style, dark-mode variant. Aspect 9:16 portrait (1080x1920). Same visual language as `infographic-warm` (illustrated magazine / science storybook, watercolor washes, ink outlines, soft texture) — but on a DEEP NIGHT-SKY BACKGROUND with neon accents, like a page from a mysterious late-night research journal.\n\n**COLOR PALETTE (strict)**:\n- Background: deep indigo night #151a2e with subtle painterly speckle (like a starry night wash)\n- Paper / card surfaces: dark navy #1e2540\n- Accent surface tiles: #2a3250\n- Primary (headline, key numbers): warm yellow #fde38a with darker yellow outline #e8b94a\n- Accent: neon cyan #22d3ee\n- Soft purple #a78bfa and coral #ff7b7b for secondary icons\n- Text: cream #f1ecd8\n- Terminal strip: pure black #06090f with cyan text #22d3ee\n\n**REQUIRED LAYOUT ZONES (same 8 zones):**\n\n1. **TOP PILL TAG (~5%)**: small cyan-outlined pill on dark, containing '{topic}' in cyan text, plus a yellow-outline circle number badge with '{card_index}'.\n\n2. **BIG HEADLINE (~15%)**: Chinese '{card_main}' in very oversized hand-drawn bold brush-stroke font, yellow #fde38a fill with thick darker outline and soft glow. 2 lines max. Star/sparkle decorations nearby.\n\n3. **SUBTITLE RIBBON (~5%)**: '{card_sub}' on a cyan tape-strip, centered.\n\n4. **MAIN ILLUSTRATION SCENE (~28%)**: night-scene watercolor with the white ROBOT (cyan glowing eyes) and the BOY (hoodie, holding glowing laptop/tablet). Props: glowing terminals, wireframe servers, night sky with stars, abstract protocol diagrams, flask with cyan glow, small moon. Curved dashed path with 3-5 numbered waypoints (yellow circles on dark). 2-3 speech-bubble sticky notes with Chinese handwriting.\n\n5. **TERMINAL / COMMAND STRIP (~6%)**: pure-black terminal with cyan mono text showing a short English command (e.g., `gpu alloc 8x h100`, `sign release v2.3`, `audit chain-id 0x4f`). Under 40 chars.\n\n6. **4-BLOCK INSIGHT GRID (~30%)**: 2×2 grid of rounded rectangles with dashed cyan outlines on dark-navy paper. Each block: yellow-circle-with-cyan-outline number, bold Chinese sub-headline, 2-3 tiny body lines, tiny watercolor icon (shield, lock, network node, chart) in corner. 4 SPECIFIC sub-points from '{point_full}'.\n\n7. **BOTTOM TAG STRIP (~6%)**: band of 3-4 dark pill tags with neon outlines (cyan, yellow, coral, purple), each with icon + Chinese keywords.\n\n8. **FOOTER MICRO TEXT (~2%)**: tiny muted cyan watermark with '{topic}'.\n\n**STICKER DECORATIONS**: circuit-trace doodles, cyan wavy underlines, star/sparkle specks, glitch-marks, tape strips, checkmarks. Hand-drawn, imperfect, slightly glowing.\n\n**STRICT BANS**: NO pure flat vector (still must feel watercolor/ink), NO 3D, NO photos, NO harsh gradients, NO emoji icons, NO Arial headlines. **NEVER render the layout-zone labels themselves** — words like 'TOP PILL TAG', 'BIG HEADLINE', 'SUBTITLE RIBBON', 'MAIN ILLUSTRATION', 'TERMINAL STRIP', 'INSIGHT GRID', 'BOTTOM TAG STRIP', 'FOOTER' are my instructions TO YOU describing where to place content, NOT text to appear in the image. Only render the actual Chinese/English content I specified.\n\n**Source bullet**: '{point_full}'\n**Topic**: '{topic}'\n**Card {card_index} of {card_total}**\n\nFeel: a page from a mysterious cyberpunk research notebook, lit by a single desk lamp, watercolor + ink style. Information density 9/10. Late-night research mood 9/10.",
+    "article_inline": "Hand-drawn watercolor + ink Chinese infographic, 16:9, DARK MODE. Deep indigo night #151a2e background with painterly speckle, warm yellow #fde38a hand-drawn headline with dark outline + soft glow, neon cyan #22d3ee accents, soft purple and coral secondary icons, cream text #f1ecd8. Topic: '{image_subject}'. Include: top cyan pill tag, big Chinese hand-drawn yellow headline, night-scene watercolor with white robot (glowing cyan eyes) + boy holding glowing laptop and tech props, curved numbered route, black terminal strip with cyan command, row of 3-4 insight sub-cards. No flat vector, no 3D, no photos."
+  },
+  "example_reference": "https://mp.weixin.qq.com/s/nSlGjh9hjM63jxz_jgUCwA",
+  "notes": "深色变体。适合前沿模型、协议、安全、基建、赛博话题。亮黄+霓虹青的点缀非常抓眼,但不适合生活化/温暖话题。"
+}

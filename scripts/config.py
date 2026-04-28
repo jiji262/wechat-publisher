@@ -212,6 +212,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
         "account_name": acc.get("name", account_name),
         "theme": acc.get("theme", "") or "",
         "image_style": acc.get("image_style", "") or "",
+        "newspic_image_style": acc.get("newspic_image_style", "") or "",
         "voice": acc.get("voice", "") or "",
         "sync_platforms": sync_platforms,
     }
@@ -222,6 +223,9 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
 # ============================================================
 
 DEFAULT_IMAGE_STYLE = "hand-drawn-blue"
+# 贴图(newspic)模式的兜底风格 —— 高密度手绘水彩信息图,对标
+# https://mp.weixin.qq.com/s/nSlGjh9hjM63jxz_jgUCwA
+DEFAULT_NEWSPIC_IMAGE_STYLE = "infographic-warm"
 
 
 def _image_styles_dir() -> Path:
@@ -269,13 +273,19 @@ def resolve_image_style(
     cli_value: Optional[str] = None,
     frontmatter_value: Optional[str] = None,
     account_name: Optional[str] = None,
+    mode: str = "news",
 ) -> Dict[str, Any]:
     """
     按优先级解析最终使用的配图风格:
       1. CLI 参数(--image-style)
       2. brief.md / article.md 的 frontmatter image_style 字段
       3. accounts.yaml 对应账号的 image_style 字段
-      4. DEFAULT_IMAGE_STYLE(hand-drawn-blue)
+      4. 全局默认:news 模式 → DEFAULT_IMAGE_STYLE(hand-drawn-blue);
+                   newspic 模式 → DEFAULT_NEWSPIC_IMAGE_STYLE(infographic-warm)
+
+    Args:
+        mode: "news" 或 "newspic"。newspic 模式下的兜底是高密度手绘水彩
+              信息图(infographic-warm),与文章模式的线条手绘风区分。
 
     Returns:
         与 get_image_style() 相同的 style dict。
@@ -286,9 +296,17 @@ def resolve_image_style(
 
     try:
         cfg = get_config(account_name)
-        if cfg.get("image_style"):
-            return get_image_style(cfg["image_style"])
+        # 贴图模式优先使用账号的 newspic_image_style(如果配了),否则回退到全局 newspic 兜底。
+        # 账号级别的 image_style 是给文章模式用的,不直接用于贴图模式 —— 文章手绘线条风
+        # (hand-drawn-blue / tech-card-blue)和贴图的高密度水彩信息图是两种完全不同的视觉语言。
+        if mode == "newspic":
+            if cfg.get("newspic_image_style"):
+                return get_image_style(cfg["newspic_image_style"])
+        else:
+            if cfg.get("image_style"):
+                return get_image_style(cfg["image_style"])
     except ConfigError:
         pass
 
-    return get_image_style(DEFAULT_IMAGE_STYLE)
+    fallback = DEFAULT_NEWSPIC_IMAGE_STYLE if mode == "newspic" else DEFAULT_IMAGE_STYLE
+    return get_image_style(fallback)

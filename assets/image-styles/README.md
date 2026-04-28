@@ -9,30 +9,76 @@
 
 ---
 
+## 两种模式,两套默认
+
+- **文章(news)模式默认**:`hand-drawn-blue`(线条手绘蓝调)
+- **贴图(newspic)模式默认**:`infographic-warm`(高密度手绘水彩信息图,暖黄配色)
+
+两套默认是**有意分开**的 —— 文章里的配图是一图一意的插图(密度低),贴图整篇就是 6-10 张卡,每张需要自己承载完整信息(密度高)。**不要**把文章的 `hand-drawn-blue` 拿来当贴图用,效果会像"草稿"。
+
+账号可以在 `accounts.yaml` 分别配 `image_style` 和 `newspic_image_style`:
+
+```yaml
+accounts:
+  main:
+    image_style: "hand-drawn-blue"        # 文章模式
+    newspic_image_style: "infographic-warm"  # 贴图模式(参考图同款)
+```
+
+---
+
 ## 风格选择流程
 
 1. 先看下面的**速查表**决定用哪一种风格
 2. 预览图只是样例 —— 实际生成时会用你自己的内容
-3. 在 `accounts.yaml` 的账号下配 `image_style: <name>`(全局默认)
+3. 在 `accounts.yaml` 的账号下配 `image_style: <name>` 和 `newspic_image_style: <name>`
 4. 单篇要覆盖:`--image-style <name>`(CLI)或 brief.md frontmatter `image_style: <name>`
 
-**优先级**:CLI `--image-style` > brief/article frontmatter `image_style` > `accounts.yaml` 账号默认 > `hand-drawn-blue`(全局兜底)。
+**优先级**:
+- **文章**:CLI `--image-style` > frontmatter > 账号 `image_style` > `hand-drawn-blue`
+- **贴图**:CLI `--image-style` > frontmatter > 账号 `newspic_image_style` > `infographic-warm`
 
 ---
 
 ## 风格速查表
 
-| 风格 | 视觉关键词 | 最适合的话题 | 贴图 | 文章 |
-|---|---|---|---|---|
-| [`tech-card-blue`](#tech-card-blue) | 浅蓝底 + 大字 + 极简 | 技术技巧、命令讲解、短观点 | ✅ | ✅ |
-| [`hand-drawn-blue`](#hand-drawn-blue) | 手绘线条 + 蓝点缀 | 概念解释、架构图、流程图(全能选手) | ✅ | ✅ 默认 |
-| [`illustrated-warm`](#illustrated-warm) | 暖橙 + 卡通人物 + 气泡 | 体验讲解、使用指南、亲切感强的技巧 | ✅ | ✅ |
-| [`xiaohongshu-colorful`](#xiaohongshu-colorful) | 暖色渐变 + emoji + 大字 | 生活提示、上手指南、清单类 | ✅ | ✅ |
-| [`quote-card-minimal`](#quote-card-minimal) | 黑白 + 衬线 + 留白 | 金句、观点、哲思 | ✅ | ❌ |
-| [`magazine-editorial`](#magazine-editorial) | 米色 + 衬线 + 栏位感 | 深度评论、专栏、长篇随笔 | ✅ | ✅ |
-| [`knowledge-card`](#knowledge-card) | 白底 + 编号 + 结构化 | 教程、方法论、清单、复习卡 | ✅ | ✅ |
-| [`data-chart`](#data-chart) | 白底 + 图表 + 数字 | 数据观察、行业报告、对比 | ✅ | ✅ |
-| [`meme-illustration`](#meme-illustration) | 黄底 + 卡通 + 对话气泡 | 吐槽、段子、行业梗 | ✅ | ✅ |
+| 风格 | 视觉关键词 | 最适合的话题 | 密度 | 贴图 | 文章 |
+|---|---|---|---|---|---|
+| [`tech-card-blue`](#tech-card-blue) | 浅蓝底 + 大字 + 极简 | 技术技巧、命令讲解、短观点 | 低 | ✅ | ✅ |
+| [`hand-drawn-blue`](#hand-drawn-blue) | 手绘线条 + 蓝点缀 | 概念解释、架构图、流程图(全能选手) | 中 | ✅ | ✅ 默认 |
+| [`illustrated-warm`](#illustrated-warm) | 暖橙 + 卡通人物 + 气泡 | 体验讲解、使用指南、亲切感强的技巧 | 中 | ✅ | ✅ |
+| [`xiaohongshu-colorful`](#xiaohongshu-colorful) | 暖色渐变 + emoji + 大字 | 生活提示、上手指南、清单类 | 中 | ✅ | ✅ |
+| [`quote-card-minimal`](#quote-card-minimal) | 黑白 + 衬线 + 留白 | 金句、观点、哲思 | 低 | ✅ | ❌ |
+| [`magazine-editorial`](#magazine-editorial) | 米色 + 衬线 + 栏位感 | 深度评论、专栏、长篇随笔 | 中 | ✅ | ✅ |
+| [`knowledge-card`](#knowledge-card) | 白底 + 编号 + 结构化 | 教程、方法论、清单、复习卡 | 中 | ✅ | ✅ |
+| [`data-chart`](#data-chart) | 白底 + 图表 + 数字 | 数据观察、行业报告、对比 | 中 | ✅ | ✅ |
+| [`meme-illustration`](#meme-illustration) | 黄底 + 卡通 + 对话气泡 | 吐槽、段子、行业梗 | 低 | ✅ | ✅ |
+| [`infographic-warm`](#infographic-warm) ⭐ | 暖黄底 + 红橙手绘 + 卡通角色 | **贴图默认,通用话题** | **高** | ✅ | ✅ |
+| [`infographic-blue`](#infographic-blue) 🔥 | 冷蓝底 + 橙色强调 + 卡通角色 | **SDK/协议/产品拆解** | **高** | ✅ | ✅ |
+| [`infographic-dark`](#infographic-dark) 🔥 | 近黑底 + 霓虹青黄 + 卡通角色 | **前沿模型、基建、赛博** | **高** | ✅ | ✅ |
+| [`infographic-mint`](#infographic-mint) 🔥 | 米白底 + 薄荷 + 珊瑚橙 + 卡通角色 | **生产力/工具/方法论** | **高** | ✅ | ✅ |
+
+### ⭐🔥 手绘水彩信息图系列 (v3 重写)
+
+**4 种配色共享同一视觉语言**:手绘水彩 + 墨线插画 + 卡通机器人&男孩角色 + 多区块高密度版面,像一页日本/台湾科普绘本或杂志插页。**对标参考**:[GPT-5.5 来了](https://mp.weixin.qq.com/s/nSlGjh9hjM63jxz_jgUCwA)。
+
+**8 个版面区块**(每张贴图都包含):
+1. 顶部小标签(话题 + 卡片序号)
+2. 粗体手绘大标题(带描边阴影)
+3. 副标题横条胶带
+4. 中部水彩插画场景(机器人+男孩+道具+编号路径)
+5. 仿 terminal 黑条(英文短命令)
+6. 2×2 要点小卡网格(4 个子点,带圆数字)
+7. 底部彩色标签胶囊带
+8. 页脚水印
+
+**选配色的建议**:
+- 不确定 / 通用 / 人文 / AI 产品 → `infographic-warm`(**默认**,暖黄参考图同款)
+- 技术拆解 / SDK / 协议 / 商务分析 → `infographic-blue`(冷蓝)
+- 前沿模型 / 基建 / 赛博 / 深夜科技 → `infographic-dark`(深夜档案)
+- 生产力 / 工具 / 方法论 / 学习笔记 → `infographic-mint`(薄荷清新)
+
+**⚠️ 使用前提**:要点本身要有具体信息(数字、名词、对比、步骤),AI 才能把子点渲染成 2×2 网格里的真内容。如果要点只有一句抽象观点,AI 会编数字 —— 那种情况下不如用 `tech-card-blue` 做极简大字卡更稳。
 
 ---
 
@@ -218,11 +264,93 @@
 
 ---
 
+### infographic-warm ⭐(贴图默认)
+
+暖米黄底 + 红橙手绘大标题 + 卡通机器人&男孩 + 水彩多区块。对标参考:[GPT-5.5 来了](https://mp.weixin.qq.com/s/nSlGjh9hjM63jxz_jgUCwA)。
+
+<table>
+<tr><td width="300">
+<img src="previews/infographic-warm.webp" alt="infographic-warm preview" />
+</td><td>
+
+- **主题色**:`#faf0d4` 暖米黄 / `#e8543a` 红橙(标题) / `#f5a623` 琥珀 / `#3a2a1c` 深棕文字
+- **排版**:9:16 竖版(1080x1920),手写粗体标题 + 思源黑体正文
+- **视觉语言**:手绘水彩 + 墨线 + 纸张纹理,绝不用 flat vector / 3D
+- **主角**:白色圆润机器人(蓝眼)+ 黄卫衣小男孩,8 区块版面
+- **最适合**:贴图模式默认、AI 产品、工具讲解、人文趋势、通用话题
+- **别用在**:如果你只想要一句金句大字卡(用 `quote-card-minimal`)
+
+</td></tr></table>
+
+---
+
+### infographic-blue 🔥
+
+和 warm 同一手绘水彩语言,但换冷蓝基底 + 橙色强调,工程师气质。
+
+<table>
+<tr><td width="300">
+<img src="previews/infographic-blue.webp" alt="infographic-blue preview" />
+</td><td>
+
+- **主题色**:`#eaf2fb` 淡蓝 / `#2a62a8` 海军蓝(标题) / `#f58a3a` 橙 / `#102a44` 墨蓝文字
+- **排版**:9:16 竖版,同 warm 的 8 区块版面
+- **主角**:同一套机器人&男孩,但服装换冷色系,场景多服务器/架构图/协议栈
+- **最适合**:SDK 拆解、协议对比、基础设施、产品评测、商务/技术并重的话题
+- **别用在**:生活化话题、情绪型内容
+
+</td></tr></table>
+
+---
+
+### infographic-dark 🔥
+
+同视觉语言的深色变体。深靛蓝夜空底 + 霓虹青黄手绘,像夜间实验室档案。
+
+<table>
+<tr><td width="300">
+<img src="previews/infographic-dark.webp" alt="infographic-dark preview" />
+</td><td>
+
+- **主题色**:`#151a2e` 深靛蓝夜 / `#fde38a` 亮黄(标题) / `#22d3ee` 霓虹青 / `#f1ecd8` 奶油文字
+- **排版**:9:16 竖版,同 8 区块版面
+- **主角**:白色机器人(霓虹青眼)+ 深色帽衫男孩,拿发光屏幕,夜间场景
+- **最适合**:前沿模型发布、协议规范、基建/安全、赛博话题
+- **别用在**:生活化 / 温暖向 / 面向非技术读者的话题
+
+</td></tr></table>
+
+---
+
+### infographic-mint 🔥
+
+同视觉语言的清新变体。米白底 + 薄荷绿 + 珊瑚橙,友好感强。
+
+<table>
+<tr><td width="300">
+<img src="previews/infographic-mint.webp" alt="infographic-mint preview" />
+</td><td>
+
+- **主题色**:`#f2f8ef` 淡薄荷 / `#2d9e7a` 薄荷绿(标题) / `#ff7b5d` 珊瑚 / `#1e2a26` 森林文字
+- **排版**:9:16 竖版,同 8 区块版面
+- **主角**:机器人(薄荷眼)+ 白/薄荷卫衣男孩,场景多桌面植物/便利贴/咖啡
+- **最适合**:生产力 / 工具使用 / 方法论 / 学习笔记 / 轻科普
+- **别用在**:严肃商业分析、赛博话题
+
+</td></tr></table>
+
+---
+
 ## 新增一种风格
 
 1. 在 `assets/image-styles/` 下复制一个现有 `.json` 作模板
 2. 改 `style_name`(文件名同步改)、`display_name`、`description`
-3. 设计 `prompt_template.newspic_card` 和 `prompt_template.article_inline`(占位符:`{topic}` / `{card_main}` / `{card_sub}` / `{image_subject}`)
+3. 设计 `prompt_template.newspic_card` 和 `prompt_template.article_inline`,可用占位符:
+   - `{topic}` — brief.md 的 topic 字段
+   - `{card_main}` / `{card_sub}` — 切分后的卡片主/副文字(老风格用这两个)
+   - `{point_full}` — 完整原始要点(未切分),信息图类新风格用这个拿更多上下文
+   - `{card_index}` / `{card_total}` — "01" / "06",渲染卡片序号
+   - `{image_subject}` — "topic - card_main" 拼接,兼容用
 4. 用 `baoyu-danger-gemini-web` 按 `newspic_card` prompt 生成一张 1:1 预览图,然后 `cwebp -q 85 src.png -o previews/<style_name>.webp`(PNG 在 repo 里会占 10-20 倍空间)
 5. 在本 README 加一行速查表 + 一个详细块
 6. `python3 scripts/wechat_api.py list-image-styles` 验证能读出

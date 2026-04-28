@@ -431,12 +431,13 @@ def publish_from_brief(
     if final_account:
         set_account(final_account)
 
-    # 标题/作者/风格
+    # 标题/作者/风格(贴图模式走 newspic,让兜底用手绘水彩信息图而非文章线条手绘)
     final_title = title or fm.get("title", "") or ""
     style = resolve_image_style(
         cli_value=image_style,
         frontmatter_value=fm.get("image_style"),
         account_name=final_account,
+        mode="newspic",
     )
 
     # 短文本

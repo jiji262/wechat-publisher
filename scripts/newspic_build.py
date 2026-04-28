@@ -38,6 +38,20 @@ brief.md 格式示例:
     # 短文本
 
     (可选,不写由 Claude 根据"要点"生成 100-300 字的短描述)
+
+-------
+
+prompt 模板中可用的变量占位符(由 build_card_plan 替换):
+    {topic}         — brief.md 的 topic 字段
+    {card_main}     — 当前卡片主文字(要点首段)
+    {card_sub}      — 当前卡片副文字(要点后段,可能为空)
+    {point_full}    — 完整原始要点(未切分),信息图类模板用它拿到更多上下文
+    {card_index}    — 当前卡片序号,两位数字如 "01"
+    {card_total}    — 卡片总数,两位数字如 "06"
+    {image_subject} — "topic - card_main" 拼接,兼容老风格
+
+tech-card-blue / data-chart 等旧风格只用 card_main/card_sub,
+infographic-blue / -warm / -dark / -mint 新风格用 point_full + card_index 做高密度信息图。
 """
 
 from __future__ import annotations
@@ -130,31 +144,72 @@ def extract_bullet_points(section_text: str) -> List[str]:
 # 拆卡
 # ============================================================
 
+_VERSION_TOKEN_RE = re.compile(
+    r"[A-Za-z][A-Za-z0-9]*(?:[-\.][A-Za-z0-9]+)+"
+)
+
+
+def _protect_version_tokens(text: str) -> Tuple[str, Dict[str, str]]:
+    """把 GPT-5.5 / V4-Pro / 2026-04-25 / API价$5/M 这样的 token 用占位符替换,
+    避免被英文句点/连字符误切。返回 (替换后文本, 占位符到原文 map)。"""
+    mapping: Dict[str, str] = {}
+
+    def repl(m: re.Match) -> str:
+        key = f"\x01TOK{len(mapping):03d}\x01"
+        mapping[key] = m.group(0)
+        return key
+
+    return _VERSION_TOKEN_RE.sub(repl, text), mapping
+
+
+def _restore_tokens(text: str, mapping: Dict[str, str]) -> str:
+    for k, v in mapping.items():
+        text = text.replace(k, v)
+    return text
+
+
 def _split_card_text(point: str, max_main: int = 18) -> Tuple[str, str]:
     """
     把一条"要点"拆成卡片主文字 + 副文字。
 
     策略:
       - 短于 max_main 直接当主文字,副文字空
-      - 含有分隔符(,。;—— — - :),按首个分隔符切,前半主 / 后半副
-      - 没分隔符的长句:按 max_main 硬切,剩余放副文字
+      - **先保护版本号 token** ("GPT-5.5" / "V4-Pro" / "2026-04-25") 不被切开
+      - 找中文句号/逗号/分号/冒号/破折号,在合理位置切
+      - 实在没自然断点才硬切
     """
     point = point.strip()
     if len(point) <= max_main:
         return point, ""
 
-    # 找首个自然分隔
-    split_pats = [r"——", r"[,。;,\.!?？!;——\-:]"]
-    for pat in split_pats:
-        m = re.search(pat, point)
-        if m and 3 <= m.start() <= max_main + 4:
-            main = point[: m.start()].strip()
-            sub = point[m.end():].strip()
+    protected, tokens = _protect_version_tokens(point)
+    # 占位符长度不同,简单用字符级 index 工作即可
+
+    # pattern 1: 中文/英文断句标点
+    safe_splits = re.compile(r"——|[,。;：:,；！？!?]")
+    for m in safe_splits.finditer(protected):
+        if 3 <= m.start() <= max_main + 8:
+            main = _restore_tokens(protected[: m.start()], tokens).strip()
+            sub = _restore_tokens(protected[m.end():], tokens).strip()
+            if main and sub and len(main) >= 3:
+                return main, sub
+
+    # pattern 2: 单独的 `-`(保护过版本号后的安全连字符),两侧至少一侧是中文才切
+    for m in re.finditer(r"-", protected):
+        i = m.start()
+        if not (3 <= i <= max_main + 8):
+            continue
+        left = protected[i - 1] if i > 0 else ""
+        right = protected[i + 1] if i + 1 < len(protected) else ""
+        if re.match(r"[一-鿿]", left) or re.match(r"[一-鿿]", right):
+            main = _restore_tokens(protected[:i], tokens).strip()
+            sub = _restore_tokens(protected[i + 1:], tokens).strip()
             if main and sub:
                 return main, sub
 
-    # 硬切
-    return point[:max_main].strip(), point[max_main:].strip()
+    # 硬切(在原始 point 上,但避开占位符)
+    restored = _restore_tokens(protected, tokens)
+    return restored[:max_main].strip(), restored[max_main:].strip()
 
 
 def build_card_plan(
@@ -180,13 +235,16 @@ def build_card_plan(
     fm = parsed["frontmatter"] or {}
     sections = parsed["sections"]
 
-    # 风格解析: CLI > frontmatter > 账号默认 > hand-drawn-blue
+    # 风格解析: CLI > frontmatter > 账号默认 > newspic 兜底(infographic-warm)
+    # 贴图模式走 mode="newspic",让兜底用高密度手绘水彩信息图,而不是文章模式
+    # 的线条手绘(hand-drawn-blue)
     style_name = image_style or fm.get("image_style")
     account = fm.get("account")
     style = resolve_image_style(
         cli_value=image_style,
         frontmatter_value=fm.get("image_style"),
         account_name=account,
+        mode="newspic",
     )
 
     # 提取要点
@@ -222,6 +280,7 @@ def build_card_plan(
     aspect = canvas.get("newspic_aspect", "1:1")
     size = canvas.get("newspic_size", "1080x1080")
 
+    total = len(points)
     cards: List[Dict[str, Any]] = []
     for i, point in enumerate(points, start=1):
         main, sub = _split_card_text(point)
@@ -230,12 +289,16 @@ def build_card_plan(
             .replace("{topic}", topic)
             .replace("{card_main}", main)
             .replace("{card_sub}", sub or main)  # 副文字空就复用主文字
+            .replace("{point_full}", point)  # 原始完整要点,给 AI 更多上下文渲染信息图
+            .replace("{card_index}", f"{i:02d}")
+            .replace("{card_total}", f"{total:02d}")
             .replace("{image_subject}", f"{topic} - {main}")
         )
         cards.append({
             "index": i,
             "card_main": main,
             "card_sub": sub,
+            "point_full": point,
             "prompt": prompt,
             "target_file": f"images/{i:02d}.png",
             "aspect": aspect,

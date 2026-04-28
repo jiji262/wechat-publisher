@@ -1,0 +1,56 @@
+{
+  "style_name": "infographic-blue",
+  "display_name": "手绘信息图·冷蓝水彩",
+  "description": "和 `infographic-warm` 同一手绘水彩视觉语言(卡通机器人+男孩角色+多区块高密度+水彩插画),但换为冷蓝基底 + 橙色强调。适合需要科技/商务/理性气质的话题:SDK 拆解、协议对比、基础设施、产品评测。",
+  "suitable_for": [
+    "tech-explainer",
+    "sdk-breakdown",
+    "product-comparison",
+    "infra-overview",
+    "protocol-spec",
+    "data-storytelling"
+  ],
+  "newspic_ready": true,
+  "article_ready": true,
+  "canvas": {
+    "newspic_aspect": "9:16",
+    "newspic_size": "1080x1920",
+    "article_aspect": "16:9",
+    "article_size": "1440x810"
+  },
+  "palette": {
+    "background": "#eaf2fb",
+    "paper": "#f7fbff",
+    "surface": "#d5e4f5",
+    "primary": "#2a62a8",
+    "primary_dark": "#13365e",
+    "accent": "#f58a3a",
+    "secondary": "#4fb1a8",
+    "secondary_alt": "#9b6bc4",
+    "secondary_warm": "#e8a24a",
+    "text": "#102a44",
+    "secondary_text": "#3e5876",
+    "divider": "#b7cce4",
+    "terminal_bg": "#0f1d30",
+    "terminal_text": "#d9e7ff"
+  },
+  "typography": {
+    "headline": "手写粗体 / 方正喵呜体 / ZCool KuaiLe / 可变粗宋体,带厚重描边",
+    "subtitle": "思源黑体 Heavy / PingFang SC Bold",
+    "body": "思源黑体 Regular / PingFang SC Regular",
+    "numbers": "圆润粗体数字(1-9 手写感)",
+    "terminal": "JetBrains Mono / Menlo"
+  },
+  "mood": ["technical", "analytical", "structured", "illustrated", "trustworthy", "information-dense"],
+  "characters": {
+    "robot": "白色圆润机身小机器人,蓝色圆眼睛,微笑表情,技术场景中有时戴耳机/举扳手/看屏幕",
+    "boy": "蓝色或灰色卫衣的小男孩,棕色短发,拿笔记本/平板,工程师气质",
+    "usage": "两个主角贯穿,每张卡至少一个,配合冷蓝基调展现科技感"
+  },
+  "prompt_template": {
+    "newspic_card": "Generate a highly-detailed, information-dense Chinese infographic card in **hand-drawn watercolor + ink illustration** style. Aspect 9:16 portrait (1080x1920). Same visual language as `infographic-warm` (illustrated magazine / science storybook page, watercolor washes, ink outlines, soft paper texture) — but with a COOL BLUE palette giving it a technical, analytical feeling.\n\n**COLOR PALETTE (strict)**:\n- Background: soft sky-blue cream #eaf2fb with subtle paper grain\n- Paper / card surfaces: #f7fbff\n- Accent surface tiles: #d5e4f5\n- Primary (headline, key numbers): deep navy blue #2a62a8 with thick darker-navy outline #13365e\n- Warm accent: orange #f58a3a (for highlights, arrows, key numbers)\n- Teal #4fb1a8 and muted purple #9b6bc4 for secondary icons\n- Text: deep navy #102a44\n- Terminal strip: near-black #0f1d30 with pale blue text #d9e7ff\n\n**REQUIRED LAYOUT ZONES (same 8 zones as infographic-warm):**\n\n1. **TOP PILL TAG (~5%)**: dark navy pill with '{topic}' in pale-blue text, plus orange-circle number badge with '{card_index}'.\n\n2. **BIG HEADLINE (~15%)**: Chinese '{card_main}' in very oversized hand-drawn bold brush-stroke font, navy #2a62a8 fill with thick darker-navy outline and slight shadow. 2 lines max. Decorative sparkle/star doodles around it.\n\n3. **SUBTITLE RIBBON (~5%)**: '{card_sub}' on a small orange ribbon/tape strip, centered. If empty, derive one line from {point_full}.\n\n4. **MAIN ILLUSTRATION SCENE (~28%)**: watercolor scene with the white cartoon ROBOT (blue eyes, friendly) and the BOY (blue/gray hoodie, engineer vibe) doing something specific to '{point_full}'. Props: laptops, servers, whiteboards with architecture diagrams, API clouds, protocol stacks, gear icons, magnifying glass. Overlay a curved dashed path with 3-5 numbered waypoints labeling sub-concepts. Include 2-3 speech-bubble sticky notes with short Chinese phrases.\n\n5. **TERMINAL / COMMAND STRIP (~6%)**: near-black terminal rectangle with window dots, monospace pale-blue text showing a short English command that metaphorically captures '{card_main}' (e.g., `kubectl apply -f agent.yaml`, `bench --compare v2`, `trace request-id`). Under 40 chars.\n\n6. **4-BLOCK INSIGHT GRID (~30%)**: 2×2 grid of rounded rectangles with dashed cool-blue outlines on pale-blue paper. Each block: navy-filled circle with white number, bold 4-6-char Chinese sub-headline, 2-3 lines tiny body text, tiny watercolor icon in corner. Extract 4 SPECIFIC sub-points from '{point_full}'.\n\n7. **BOTTOM TAG STRIP (~6%)**: horizontal band of 3-4 pastel pill tags (orange, teal, muted-purple, navy), each with icon + 2-4 Chinese keywords.\n\n8. **FOOTER MICRO TEXT (~2%)**: faint gray watermark with '{topic}'.\n\n**STICKER DECORATIONS**: masking tape, sticky notes, stars, checkmarks, tiny gears/circuits, cloud doodles, wavy underlines. Hand-drawn, slightly tilted, imperfect.\n\n**STRICT BANS**: NO flat vector, NO 3D, NO photos, NO gradient glows, NO emoji icons, NO Arial/Helvetica headlines, NO large empty whitespace. **NEVER render the layout-zone labels themselves** — words like 'TOP PILL TAG', 'BIG HEADLINE', 'SUBTITLE RIBBON', 'MAIN ILLUSTRATION', 'TERMINAL STRIP', 'INSIGHT GRID', 'BOTTOM TAG STRIP', 'FOOTER' are my instructions TO YOU describing where to place content, NOT text to appear in the image. Only render the actual Chinese/English content I specified.\n\n**Source bullet**: '{point_full}'\n**Topic**: '{topic}'\n**Card {card_index} of {card_total}**\n\nFeel: a technical magazine (like IEEE Spectrum illustrated edition) rendered as a watercolor storybook page. Information density 9/10. Technical credibility 9/10.",
+    "article_inline": "Generate a hand-drawn watercolor + ink Chinese infographic illustration, 16:9 landscape. Soft sky-blue #eaf2fb background, navy #2a62a8 hand-drawn brush-stroke headline with thick outline, orange #f58a3a accents, teal #4fb1a8 and muted purple #9b6bc4 secondary icons, navy text #102a44. Topic: '{image_subject}'. Include: top pill tag, big Chinese hand-drawn headline, watercolor scene with white cartoon robot + boy (engineer vibe) and tech props (laptops, servers, diagrams, gears), a curved numbered route, thin terminal strip with short English command, row of 3-4 insight sub-cards. No flat vector, no 3D, no photos."
+  },
+  "example_reference": "https://mp.weixin.qq.com/s/nSlGjh9hjM63jxz_jgUCwA",
+  "notes": "和 infographic-warm 同视觉语言的冷调变体。适合需要展现理性/技术/商务气质的话题。要点里有具体数字、API 名字、版本号、架构名词时效果最好。"
+}
