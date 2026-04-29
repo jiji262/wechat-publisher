@@ -2,7 +2,7 @@
   "theme_name": "elegant-ink",
   "description": "水墨雅韵 - 墨黑 + 朱砂红,衬线字体,克制雅致的现代宋体,适合观点 / 人文 / 深度长文",
   "styles": {
-    "body": "font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'PingFang SC', serif; font-size: 16px; color: #1d1a17; line-height: 1.95; letter-spacing: 0.8px; word-spacing: 2px; padding: 28px 36px; background: #fafaf7;",
+    "body": "font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'PingFang SC', serif; font-size: 16px; color: #1d1a17; line-height: 1.95; letter-spacing: 0.8px; word-spacing: 2px; padding: 20px 28px; background: #fafaf7;",
     "h1": "font-size: 24px; font-weight: 700; color: #1a1a1a; text-align: center; margin: 40px 0 28px; padding: 0 0 18px 0; letter-spacing: 4px; line-height: 1.4; border-bottom: 2px solid #1a1a1a;",
     "h2": "font-size: 19px; font-weight: 700; color: #1a1a1a; margin: 40px 0 20px; padding: 4px 0 10px 0; border-bottom: 1px solid #1a1a1a; line-height: 1.55; letter-spacing: 1.5px;",
     "h3": "font-size: 16px; font-weight: 700; color: #6a2828; margin: 30px 0 14px; padding: 0 0 0 12px; border-left: 3px solid #6a2828; letter-spacing: 1px;",

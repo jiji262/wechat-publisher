@@ -2,7 +2,7 @@
   "theme_name": "magazine-grid",
   "description": "杂志衬线 - 衬线大标题 + 大留白,杂志内页感,适合专题报道 / 长篇深度 / 艺术人文",
   "styles": {
-    "body": "font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', Georgia, serif; font-size: 15.5px; color: #1f1a14; line-height: 1.9; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 28px 36px; background: #fbfaf6;",
+    "body": "font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', Georgia, serif; font-size: 15.5px; color: #1f1a14; line-height: 1.9; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 28px; background: #fbfaf6;",
     "h1": "font-size: 28px; font-weight: 800; color: #1f1a14; text-align: left; margin: 40px 0 18px; padding: 0; line-height: 1.25; letter-spacing: -0.2px;",
     "h2": "font-size: 12px; font-weight: 700; color: #a0330f; margin: 44px 0 18px; padding: 0 0 12px 0; border-bottom: 1px solid #a0330f; letter-spacing: 4px; text-transform: uppercase; line-height: 1.4;",
     "h3": "font-size: 17px; font-weight: 700; color: #1f1a14; margin: 30px 0 12px; padding: 0; letter-spacing: 0.2px;",

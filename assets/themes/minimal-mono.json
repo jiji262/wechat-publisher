@@ -2,7 +2,7 @@
   "theme_name": "minimal-mono",
   "description": "极简等宽 - 纯黑白 + 等宽字,偏工程师审美,适合技术 / 工程 / 开发类长文",
   "styles": {
-    "body": "font-family: 'JetBrains Mono', 'Menlo', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #1a1a1a; line-height: 1.8; letter-spacing: 0.3px; word-spacing: 1px; padding: 28px 36px; background: #ffffff;",
+    "body": "font-family: 'JetBrains Mono', 'Menlo', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #1a1a1a; line-height: 1.8; letter-spacing: 0.3px; word-spacing: 1px; padding: 20px 28px; background: #ffffff;",
     "h1": "font-size: 22px; font-weight: 800; color: #000000; text-align: left; margin: 36px 0 18px; padding: 0 0 10px 0; border-bottom: 3px solid #000000; line-height: 1.35;",
     "h2": "font-size: 17px; font-weight: 800; color: #000000; margin: 36px 0 16px; padding: 0; line-height: 1.5; letter-spacing: 0.3px;",
     "h3": "font-size: 14.5px; font-weight: 700; color: #1a1a1a; margin: 26px 0 12px; padding: 0; text-transform: none; letter-spacing: 0.2px;",

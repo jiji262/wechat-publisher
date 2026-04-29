@@ -2,7 +2,7 @@
   "theme_name": "sunset-coral",
   "description": "夕阳珊瑚 - 暖橙 + 奶白,热烈克制的活力色,适合热点 / 榜单 / 潮流 / 轻快话题",
   "styles": {
-    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #2b1a10; line-height: 1.8; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 28px 36px; background: #fffaf5;",
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #2b1a10; line-height: 1.8; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 28px; background: #fffaf5;",
     "h1": "font-size: 23px; font-weight: 800; color: #2b1a10; text-align: left; margin: 34px 0 22px; padding: 0 0 14px 0; border-bottom: 3px solid #ff6b4a; letter-spacing: 0.3px; line-height: 1.4;",
     "h2": "font-size: 18px; font-weight: 800; color: #2b1a10; margin: 38px 0 18px; padding: 10px 14px; background: linear-gradient(90deg, #ffe8dd 0%, #ffe8dd 3px, #fff3eb 3px, transparent 100%); border-radius: 4px; line-height: 1.5; letter-spacing: 0.2px;",
     "h3": "font-size: 16px; font-weight: 700; color: #c43a1a; margin: 28px 0 12px; padding: 0 0 0 12px; border-left: 3px solid #ff6b4a; letter-spacing: 0.3px;",

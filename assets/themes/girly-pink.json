@@ -2,7 +2,7 @@
   "theme_name": "girly-pink",
   "description": "少女粉系 - 粉紫渐变 + 可爱风,甜美轻盈,适合时尚 / 美妆 / 情感 / 少女向内容",
   "styles": {
-    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #4a2a3e; line-height: 1.85; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 28px 36px; background: #fff5fa;",
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #4a2a3e; line-height: 1.85; letter-spacing: 0.35px; word-spacing: 1.5px; padding: 20px 28px; background: #fff5fa;",
     "h1": "font-size: 22px; font-weight: 800; color: #b83f7a; text-align: center; margin: 34px 0 24px; padding: 16px 20px; background: linear-gradient(135deg, #ffe4f0 0%, #f4e0ff 100%); border-radius: 20px; letter-spacing: 1px; line-height: 1.5;",
     "h2": "font-size: 17.5px; font-weight: 800; color: #b83f7a; margin: 38px 0 18px; padding: 8px 18px; background: linear-gradient(90deg, #ffe4f0 0%, transparent 100%); border-radius: 16px; line-height: 1.5; letter-spacing: 0.3px; display: inline-block;",
     "h3": "font-size: 15.5px; font-weight: 700; color: #b83f7a; margin: 28px 0 12px; padding: 0 0 0 16px; border-left: 4px solid #ff87c2; letter-spacing: 0.3px;",
