@@ -8,6 +8,7 @@
 |---|---|
 | `index.html` | 主题对比总览(带手机 frame + CLI 提示) |
 | `sample.md` | 样例文章源(含 h1~h3 / 列表 / 引用 / 代码块 / 表格 / 7 种行内高亮 / 分节符) |
+| `screenshots/*.webp` | 主 README 用到的静态截图(总览 + 代表主题卡片) |
 | `refined-blue.html` | main 账号默认主题预览 |
 | `minimal-mono.html` | tech 账号默认主题预览 |
 | `<theme>.html`(× 14) | 14 套可选主题预览,与 `../themes/*.json` 一一对应 |

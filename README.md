@@ -270,6 +270,39 @@ python3 scripts/ai_score.py article.md --threshold 45
 
 > **想直观看效果?** 打开 [`assets/theme-previews/index.html`](assets/theme-previews/index.html),16 套主题用同一篇文章渲染在手机宽度 frame 里并排对比,带分类筛选和色板预览。
 
+### 主题截图
+
+下面这组图直接来自 `assets/theme-previews/index.html` 的静态截图,和 HTML 预览使用同一篇样例文章,方便在 GitHub 里快速比对主题观感。
+
+![16 套公众号主题总览](assets/theme-previews/screenshots/theme-overview.webp)
+
+<table>
+<tr>
+<td width="50%">
+<img src="assets/theme-previews/screenshots/refined-blue.webp" alt="refined-blue preview" />
+<br />
+<code>refined-blue</code> · main 默认,适合 AI / 产品 / 深度分析
+</td>
+<td width="50%">
+<img src="assets/theme-previews/screenshots/minimal-mono.webp" alt="minimal-mono preview" />
+<br />
+<code>minimal-mono</code> · tech 默认,适合技术 / 工程文章
+</td>
+</tr>
+<tr>
+<td width="50%">
+<img src="assets/theme-previews/screenshots/news-bold.webp" alt="news-bold preview" />
+<br />
+<code>news-bold</code> · 适合新闻 / 热点 / 速读
+</td>
+<td width="50%">
+<img src="assets/theme-previews/screenshots/ink-wash.webp" alt="ink-wash preview" />
+<br />
+<code>ink-wash</code> · 适合人文 / 随笔 / 文化
+</td>
+</tr>
+</table>
+
 ### 按文章气质挑选
 
 | 类别 | 推荐主题 | 视觉关键词 |
