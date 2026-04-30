@@ -12,7 +12,7 @@
   1. 安装 Chrome 扩展 Wechatsync 并登录各目标平台
   2. 扩展设置里启用「MCP 连接」并拷出 Token
   3. npm install -g @wechatsync/cli
-  4. .env 加 WECHATSYNC_MCP_TOKEN=xxx
+  4. wechat-publisher.yaml 加 integrations.wechatsync_mcp_token
 
 用法：
     python multi_publish.py --input article.md --platforms zhihu,juejin,csdn
@@ -28,6 +28,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+try:
+    from config import load_env
+except ImportError:
+    load_env = None
 
 
 SUPPORTED_PLATFORMS = {
@@ -67,6 +72,8 @@ def check_prerequisites(verbose=True):
     （例如 CLI 没装会直接阻断,token 没配则只 warn）。
     """
     problems = []
+    if load_env:
+        load_env()
 
     # 1. wechatsync CLI
     cli_path = shutil.which("wechatsync")
@@ -86,7 +93,7 @@ def check_prerequisites(verbose=True):
     if not token:
         problems.append(
             "未配置 WECHATSYNC_MCP_TOKEN。请在 Chrome 扩展的 MCP 设置里生成 Token,"
-            "并写入 .env 的 WECHATSYNC_MCP_TOKEN=xxx"
+            "并写入 wechat-publisher.yaml 的 integrations.wechatsync_mcp_token"
         )
     elif verbose:
         print(f"  ✓ WECHATSYNC_MCP_TOKEN: {token[:6]}...")

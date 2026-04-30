@@ -285,7 +285,7 @@ def publish_from_markdown(
         print(f"  API连接正常，token已获取")
     except Exception as e:
         print(f"  API连接失败：{e}")
-        print("  请检查 accounts.yaml 中的 app_id / app_secret 配置")
+        print("  请检查 wechat-publisher.yaml 中的 app_id / app_secret 配置")
         sys.exit(1)
 
     # 5. 处理图片
@@ -457,7 +457,7 @@ def publish_from_brief(
     if not images_dir.exists():
         raise FileNotFoundError(
             f"找不到图片目录: {images_dir}\n"
-            f"请先用 newspic_build.py + baoyu-danger-gemini-web 生成贴图,保存为 {images_dir}/01.png 起。"
+            f"请先用 newspic_build.py + scripts/baoyu_image_gen.ts 生成贴图,保存为 {images_dir}/01.png 起。"
         )
     exts = (".png", ".jpg", ".jpeg", ".webp")
     image_paths = sorted(
@@ -648,7 +648,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="临时文件目录(默认每次运行独立生成,避免并发冲突)",
     )
-    parser.add_argument("--account", help="指定公众号账号（对应 accounts.yaml 中的账号名）")
+    parser.add_argument("--account", help="指定公众号账号（对应 wechat-publisher.yaml 中的账号名）")
     parser.add_argument(
         "--sync",
         help="可选:发到微信后同步到其他平台,逗号分隔(如 zhihu,juejin,csdn)。"
@@ -684,7 +684,7 @@ def _resolve_config(args):
     约定:
       - `--sync-from-config` 显式要求读配置,任何 ConfigError 都应 exit 1。
       - 其他情况(只是兜底 author/theme)下 ConfigError 会被静默吞掉,
-        保留原有"没有 accounts.yaml 也能用 --author 硬写"的行为。
+        保留原有"没有配置文件也能用 --author 硬写"的行为。
     """
     config_sync_platforms = None
     needs_config = (
@@ -698,7 +698,7 @@ def _resolve_config(args):
     except ConfigError as e:
         if args.sync_from_config:
             print(f"[配置错误] {e}", file=sys.stderr)
-            print("--sync-from-config 需要有效的 accounts.yaml 配置。", file=sys.stderr)
+            print("--sync-from-config 需要有效的 wechat-publisher.yaml 配置。", file=sys.stderr)
             sys.exit(1)
         if args.author is None:
             args.author = "飞哥"

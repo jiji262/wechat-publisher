@@ -5,7 +5,7 @@
 输入: 一个 brief.md,含 YAML frontmatter + 要点列表 + (可选)短文本
 输出: 一份 card_plan.json,列出每张卡的主副文字 + 生图 prompt + 目标文件名
 
-本脚本**不直接生成图片**。生图由主流程 Claude 调 `baoyu-danger-gemini-web`
+本脚本**不直接生成图片**。生图由主流程 Claude 调项目内置 `scripts/generate_image.py`
 按 card_plan.json 的 prompts 批量执行,保存到 `<slug>/images/`。
 
 典型流程:
@@ -379,7 +379,7 @@ def main():
     out_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"card_plan.json 已写入: {out_path}")
     print("\n下一步:")
-    print("  1. Claude 按 card_plan.json 里每张卡的 prompt 调 baoyu-danger-gemini-web 生图")
+    print("  1. Claude 按 card_plan.json 里每张卡的 prompt 调 scripts/generate_image.py 生图")
     print(f"     目标路径: {brief_path.parent}/images/01.png, 02.png, ...")
     print("  2. 如短文本未填,Claude 根据要点撰写 100-300 字短描述写入 brief.md '# 短文本' 小节")
     print("  3. python3 ai_score.py <brief.md 里的短文本> --mode newspic --threshold 45")

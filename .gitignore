@@ -10,6 +10,7 @@ build/
 .env
 .env.local
 .env.backup
+wechat-publisher.yaml
 accounts.yaml
 scripts/.token_cache*
 scripts/.token_cache*.json

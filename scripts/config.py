@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-多账号配置管理
+统一配置管理。
 
-accounts.yaml 为唯一可信来源,不再从 .env 读取微信凭证。
-`.env` 只保留给非微信凭证使用(比如 WECHATSYNC_MCP_TOKEN)。
+优先读取 wechat-publisher.yaml。旧 accounts.yaml / .env / image-gen.env
+保留兼容,但新配置应尽量集中到 wechat-publisher.yaml。
 
 用法:
     from config import set_account, get_config, ConfigError
@@ -11,8 +11,8 @@ accounts.yaml 为唯一可信来源,不再从 .env 读取微信凭证。
     cfg = get_config()  # 返回当前账号的完整配置
 """
 
-import json
 import os
+import json
 from pathlib import Path
 from typing import Optional, Dict, List, Any
 
@@ -51,21 +51,103 @@ def get_account_name() -> Optional[str]:
 
 
 # ============================================================
-# .env 加载(仅用于非微信凭证,比如 WECHATSYNC_MCP_TOKEN)
+# 统一配置 / .env 加载
 # ============================================================
+
+UNIFIED_CONFIG_NAME = "wechat-publisher.yaml"
+LEGACY_ACCOUNTS_NAME = "accounts.yaml"
+
+
+def _config_candidates(filename: str) -> List[Path]:
+    return [
+        Path.cwd() / filename,
+        Path(__file__).parent.parent / filename,
+        Path.home() / ".wechat-publisher" / filename,
+    ]
+
+
+def _find_yaml(filename: str) -> Optional[Path]:
+    for p in _config_candidates(filename):
+        if p.exists():
+            return p
+    return None
+
+
+def _load_yaml(path: Path) -> Dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return data if isinstance(data, dict) else {}
+
+
+def _find_unified_yaml() -> Optional[Path]:
+    """按优先级查找 wechat-publisher.yaml: CWD → skill 根 → $HOME/.wechat-publisher/。"""
+    return _find_yaml(UNIFIED_CONFIG_NAME)
+
+
+def _load_unified_yaml() -> Dict[str, Any]:
+    path = _find_unified_yaml()
+    if path is None:
+        return {}
+    return _load_yaml(path)
+
+
+def _set_env_if_present(key: str, value: Any) -> None:
+    if value is None:
+        return
+    text = str(value).strip()
+    if text:
+        os.environ.setdefault(key, text)
+
+
+def _load_unified_env() -> None:
+    cfg = _load_unified_yaml()
+    if not cfg:
+        return
+
+    integrations = cfg.get("integrations") or {}
+    if isinstance(integrations, dict):
+        _set_env_if_present("WECHATSYNC_MCP_TOKEN", integrations.get("wechatsync_mcp_token"))
+
+    image = cfg.get("image_generation") or {}
+    if not isinstance(image, dict):
+        return
+
+    _set_env_if_present("WECHAT_PUBLISHER_IMAGE_GENERATOR", image.get("generator"))
+
+    openai = image.get("openai") or {}
+    if isinstance(openai, dict):
+        _set_env_if_present("OPENAI_API_KEY", openai.get("api_key"))
+        _set_env_if_present("OPENAI_BASE_URL", openai.get("base_url"))
+        _set_env_if_present("OPENAI_IMAGE_MODEL", openai.get("image_model"))
+
+    gemini_proxy = image.get("gemini_proxy") or {}
+    if isinstance(gemini_proxy, dict):
+        _set_env_if_present("GEMINI_PROXY_API_KEY", gemini_proxy.get("api_key"))
+        _set_env_if_present("GEMINI_PROXY_BASE_URL", gemini_proxy.get("base_url"))
+        _set_env_if_present("GEMINI_PROXY_IMAGE_MODEL", gemini_proxy.get("image_model"))
+
+    gemini_web = image.get("gemini_web") or {}
+    if isinstance(gemini_web, dict):
+        _set_env_if_present("GEMINI_WEB_DATA_DIR", gemini_web.get("data_dir"))
+        _set_env_if_present("GEMINI_WEB_COOKIE_PATH", gemini_web.get("cookie_path"))
+        _set_env_if_present("GEMINI_WEB_CHROME_PROFILE_DIR", gemini_web.get("chrome_profile_dir"))
+        _set_env_if_present("GEMINI_WEB_CHROME_PATH", gemini_web.get("chrome_path"))
+
 
 def load_env(env_path: Optional[Path] = None) -> None:
     """
-    从 .env 加载环境变量到 os.environ(不覆盖已有值)。
+    加载辅助环境变量到 os.environ(不覆盖已有值)。
 
-    注意:从此版本起,**不再**从 .env 读取 WECHAT_APP_ID / WECHAT_APP_SECRET。
-    accounts.yaml 是微信凭证的唯一可信来源。
-    .env 只用于 WECHATSYNC_MCP_TOKEN 之类的辅助凭证。
+    优先从 wechat-publisher.yaml 的 integrations / image_generation 加载。
+    旧 .env 仍兼容,但只建议作为历史 fallback。
     """
+    _load_unified_env()
+
     if env_path is None:
         candidates = [
             Path.cwd() / ".env",
             Path(__file__).parent.parent / ".env",
+            Path.home() / ".wechat-publisher" / "image-gen.env",
             Path.home() / ".env",
         ]
         for p in candidates:
@@ -88,24 +170,16 @@ def load_env(env_path: Optional[Path] = None) -> None:
 
 
 # ============================================================
-# accounts.yaml
+# wechat-publisher.yaml / accounts.yaml
 # ============================================================
 
 def _find_accounts_yaml() -> Optional[Path]:
-    """按优先级查找 accounts.yaml: CWD → skill 根 → $HOME/.wechat-publisher/。"""
-    candidates = [
-        Path.cwd() / "accounts.yaml",
-        Path(__file__).parent.parent / "accounts.yaml",
-        Path.home() / ".wechat-publisher" / "accounts.yaml",
-    ]
-    for p in candidates:
-        if p.exists():
-            return p
-    return None
+    """兼容旧接口:优先返回统一配置,再返回旧 accounts.yaml。"""
+    return _find_unified_yaml() or _find_yaml(LEGACY_ACCOUNTS_NAME)
 
 
 def _load_accounts_yaml(yaml_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-    """加载并解析 accounts.yaml。返回 None 表示找不到文件。"""
+    """加载统一配置或旧 accounts.yaml。返回 None 表示找不到文件。"""
     if yaml_path is None:
         yaml_path = _find_accounts_yaml()
     if yaml_path is None:
@@ -147,7 +221,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
     优先级:
       1. account_name 参数
       2. set_account() 设置的全局账号
-      3. accounts.yaml 的 `default` 字段
+      3. wechat-publisher.yaml / accounts.yaml 的 `default` 字段
 
     Raises:
         ConfigError: 配置文件缺失、账号不存在、或缺少必要字段(app_id/app_secret)
@@ -160,6 +234,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
             "account_key": str,
             "account_name": str,
             "theme": str,
+            "image_generator": str,
             "voice": str,
             "sync_platforms": list[str] | None,   # 可选,未配置为 None
         }
@@ -169,7 +244,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
     yaml_config = _load_accounts_yaml()
     if not yaml_config or "accounts" not in yaml_config or not yaml_config["accounts"]:
         raise ConfigError(
-            "未找到 accounts.yaml 或文件为空。请参考 accounts.yaml.example 创建配置。"
+            "未找到 wechat-publisher.yaml / accounts.yaml 或文件为空。请参考 wechat-publisher.yaml.example 创建配置。"
         )
 
     if account_name is None:
@@ -178,7 +253,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
     if account_name is None:
         available = ", ".join(yaml_config["accounts"].keys())
         raise ConfigError(
-            f"未指定账号且 accounts.yaml 里无 default。可用账号: {available}"
+            f"未指定账号且 wechat-publisher.yaml / accounts.yaml 里无 default。可用账号: {available}"
         )
 
     if account_name not in yaml_config["accounts"]:
@@ -188,6 +263,10 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
         )
 
     acc = yaml_config["accounts"][account_name]
+    image_generation = yaml_config.get("image_generation") or {}
+    if not isinstance(image_generation, dict):
+        image_generation = {}
+
     app_id = acc.get("app_id", "")
     app_secret = acc.get("app_secret", "")
     if not app_id or not app_secret:
@@ -213,6 +292,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
         "theme": acc.get("theme", "") or "",
         "image_style": acc.get("image_style", "") or "",
         "newspic_image_style": acc.get("newspic_image_style", "") or "",
+        "image_generator": acc.get("image_generator", "") or image_generation.get("generator", "") or "",
         "voice": acc.get("voice", "") or "",
         "sync_platforms": sync_platforms,
     }
@@ -279,7 +359,7 @@ def resolve_image_style(
     按优先级解析最终使用的配图风格:
       1. CLI 参数(--image-style)
       2. brief.md / article.md 的 frontmatter image_style 字段
-      3. accounts.yaml 对应账号的 image_style 字段
+      3. wechat-publisher.yaml / accounts.yaml 对应账号的 image_style 字段
       4. 全局默认:news 模式 → DEFAULT_IMAGE_STYLE(hand-drawn-blue);
                    newspic 模式 → DEFAULT_NEWSPIC_IMAGE_STYLE(infographic-warm)
 

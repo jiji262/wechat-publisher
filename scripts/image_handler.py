@@ -454,7 +454,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="微信公众号图片处理工具")
-    parser.add_argument("--account", help="指定公众号账号（对应 accounts.yaml 中的账号名）")
+    parser.add_argument("--account", help="指定公众号账号（对应 wechat-publisher.yaml 中的账号名）")
     subparsers = parser.add_subparsers(dest="command")
 
     # download 命令

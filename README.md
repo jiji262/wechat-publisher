@@ -16,8 +16,8 @@ npx skills add jiji262/wechat-publisher
 
 ```bash
 git clone https://github.com/jiji262/wechat-publisher.git ~/.claude/skills/wechat-publisher
-cp ~/.claude/skills/wechat-publisher/accounts.yaml.example ~/.claude/skills/wechat-publisher/accounts.yaml
-# 编辑 accounts.yaml 填入微信公众号 AppID / AppSecret
+cp ~/.claude/skills/wechat-publisher/wechat-publisher.yaml.example ~/.claude/skills/wechat-publisher/wechat-publisher.yaml
+# 编辑 wechat-publisher.yaml 填入公众号、生图、同步等配置
 pip install requests pyyaml
 ```
 
@@ -27,7 +27,7 @@ pip install requests pyyaml
 
 - **全网素材搜索**:围绕话题自动多轮搜索,交叉验证数据,筛选最新案例和权威观点
 - **AI智能写作**:按照头部博主风格生成3000-5000字深度文章,反AI味写作规则,段落短小有呼吸感
-- **AI配图生成**:通过 `baoyu-danger-gemini-web` skill(或其他图片生成 skill)为每个章节生成风格统一的手绘信息图(6-10张/篇)
+- **AI配图生成**:通过项目内置 `scripts/generate_image.py` 为每个章节生成风格统一的手绘信息图(6-10张/篇),默认走 `baoyu-image-gen`,也可切到 Web 登录版 Gemini
 - **微信排版转换**:Markdown → 微信兼容 HTML,所有样式自动内联,内置 **16 套主题(v2026)**,覆盖 AI/技术/商业/新闻/人文/生活/时尚 7 大场景,见下方[排版主题](#排版主题)章节
 - **图片CDN上传**:自动上传图片到微信服务器,获取 `mmbiz.qpic.cn` 链接并替换占位符
 - **一键发布草稿**:封面图、标题、摘要、作者全部自动填好,直达草稿箱
@@ -40,14 +40,14 @@ pip install requests pyyaml
 wechat-publisher/
 ├── SKILL.md                    # 通用 Skill 定义文件(7 阶段工作流,第 7 阶段为可选)
 ├── README.md                   # 项目说明
-├── accounts.yaml               # 公众号凭证(唯一可信来源,gitignored)
-├── accounts.yaml.example       # 账号配置模板
-├── .env                        # 仅存放 WECHATSYNC_MCP_TOKEN 等非微信凭证
+├── wechat-publisher.yaml       # 统一配置(公众号/生图/同步,gitignored)
+├── wechat-publisher.yaml.example # 统一配置模板
+├── accounts.yaml               # 旧账号配置(兼容 fallback,gitignored)
 ├── .gitignore
 ├── scripts/
 │   ├── publish.py              # 一键发布主流程(串联所有模块 + AI 味 gate)
 │   ├── wechat_api.py           # 向后兼容 facade + CLI 入口(重导出 config/token/api)
-│   ├── config.py               # accounts.yaml 加载 + ConfigError
+│   ├── config.py               # wechat-publisher.yaml 加载 + ConfigError
 │   ├── wechat_token.py         # access_token 获取与本地缓存
 │   ├── api.py                  # 图片上传 / 草稿创建 / 发布
 │   ├── html_converter.py       # Markdown → 微信 HTML(16 套主题 + 行内标色 + list_style)
@@ -78,7 +78,7 @@ cd wechat-publisher
 
 ### 2. 安装依赖
 
-`pyyaml` 是硬依赖(读 `accounts.yaml`),`requests` 用于 HTTP 调用:
+`pyyaml` 是硬依赖(读 `wechat-publisher.yaml`),`requests` 用于 HTTP 调用:
 
 ```bash
 pip install requests pyyaml --break-system-packages
@@ -90,7 +90,7 @@ pip install requests pyyaml --break-system-packages
 
 1. 获取 AppID 和 AppSecret(首次使用需启用开发者密码)
 2. 在「IP白名单」中添加当前机器的公网IP(`curl ifconfig.me` 查询)
-3. 复制 `accounts.yaml.example` 到 `accounts.yaml` 并填入真实凭证:
+3. 复制 `wechat-publisher.yaml.example` 到 `wechat-publisher.yaml` 并填入真实凭证和生图配置:
 
 ```yaml
 default: main
@@ -100,9 +100,48 @@ accounts:
     app_id: "wx..."
     app_secret: "..."
     author: "飞哥"
+
+image_generation:
+  generator: "baoyu-image-gen"
+  gemini_proxy:
+    base_url: "https://website-data-analysis.replit.app"
+    api_key: "cr_..."
+    image_model: "google/gemini-3-pro-image-preview"
+
+integrations:
+  wechatsync_mcp_token: ""
 ```
 
-> **注意**:从本版本起,`accounts.yaml` 是微信凭证的**唯一可信来源**。`.env` 不再读取 `WECHAT_APP_ID` / `WECHAT_APP_SECRET`,只保留 `WECHATSYNC_MCP_TOKEN` 等辅助凭证。如果你是老用户,原 `.env` 已自动备份为 `.env.backup`。
+> **注意**:`wechat-publisher.yaml` 是新的统一配置入口。旧 `accounts.yaml` / `.env` / `image-gen.env` 仍兼容,但只作为 fallback。
+
+`wechat-publisher.yaml` 查找优先级:
+
+1. 当前工作目录 `wechat-publisher.yaml`
+2. skill 根目录 `wechat-publisher.yaml`
+3. `~/.wechat-publisher/wechat-publisher.yaml`
+
+如果你想把配置做成机器级共享,可以放到:
+
+```bash
+mkdir -p ~/.wechat-publisher
+cp wechat-publisher.yaml ~/.wechat-publisher/wechat-publisher.yaml
+```
+
+### 3.1 配置生图后端
+
+项目内置统一生图入口 `scripts/generate_image.py` 不依赖外部 baoyu skills。默认后端是 `baoyu-image-gen`,也就是本项目内置的 `scripts/baoyu_image_gen.ts`;可配置为 `baoyu-danger-gemini-web`,使用本项目内置拷贝的 Web 登录版 Gemini。
+
+默认 `baoyu-image-gen` 支持两种 provider:
+
+1. `openai`
+2. `gemini-proxy`(Gemini CLI / chat 代理)
+
+生图后端选择有两种:
+
+1. `baoyu-image-gen`:默认,支持 OpenAI Images 和 Gemini CLI / chat 代理
+2. `baoyu-danger-gemini-web`:Web 登录版 Gemini,使用 `scripts/baoyu_danger_gemini_web/`,需要本机已保存 Gemini Web 登录 cookie
+
+所有生图凭证都建议放在 `wechat-publisher.yaml` 的 `image_generation` 下。旧 `~/.wechat-publisher/image-gen.env`、`.image-gen.env`、`.env` 仍会兼容读取。
 
 ### 4. 验证连接
 
@@ -225,7 +264,7 @@ python3 scripts/publish.py \
   --digest "文章摘要"
 ```
 
-`publish.py` 会自动从 `accounts.yaml` 读 `author` / `theme`,再依次做图片处理 → HTML 转换 → AI 味检测 → 封面上传 → 创建草稿。默认阈值 45,过关才会继续。
+`publish.py` 会自动从 `wechat-publisher.yaml` 读 `author` / `theme`,再依次做图片处理 → HTML 转换 → AI 味检测 → 封面上传 → 创建草稿。默认阈值 45,过关才会继续。
 
 常用可选参数:
 
@@ -369,13 +408,13 @@ python3 scripts/html_converter.py article.md --theme my-brand -o preview.html
 
 串联所有模块:读取 Markdown → 处理图片 → 转换 HTML →**AI 味 gate** → 上传封面 → 创建草稿。
 
-作者和主题从 `accounts.yaml` 对应账号自动读取,也可通过 `--author` 覆盖。
+作者和主题从 `wechat-publisher.yaml` 对应账号自动读取,也可通过 `--author` 覆盖。
 
 ### wechat_api.py - 微信 API 向后兼容 facade
 
 本文件现在只是一个 facade,重导出以下模块并提供 CLI(`python3 scripts/wechat_api.py list-accounts / token / upload-thumb / draft`):
 
-- **`config.py`**:`accounts.yaml` 解析、`ConfigError`、`set_account` / `get_config` / `list_accounts`
+- **`config.py`**:`wechat-publisher.yaml` 解析、`ConfigError`、`set_account` / `get_config` / `list_accounts`
 - **`wechat_token.py`**:`get_access_token`,本地文件缓存,过期前5分钟自动刷新
 - **`api.py`**:`upload_content_image` / `upload_thumb_image` / `add_draft` / `publish_article`
 
@@ -404,20 +443,58 @@ python3 scripts/html_converter.py article.md --theme my-brand -o preview.html
 
 ### multi_publish.py - 多平台同步(可选)
 
-基于 [`@wechatsync/cli`](https://github.com/wechatsync/Wechatsync) + Chrome 扩展,同步到知乎 / 掘金 / CSDN 等。需要在 `.env` 设置 `WECHATSYNC_MCP_TOKEN`。详见 SKILL.md 阶段七。
+基于 [`@wechatsync/cli`](https://github.com/wechatsync/Wechatsync) + Chrome 扩展,同步到知乎 / 掘金 / CSDN 等。建议在 `wechat-publisher.yaml` 的 `integrations.wechatsync_mcp_token` 设置 token。详见 SKILL.md 阶段七。
 
 ## 配图生成
 
-所有配图通过 **`baoyu-danger-gemini-web`** skill 生成(或其他任意图片生成 skill),统一使用手绘蓝色信息图风格。具体 prompt 模板和风格要点见 `SKILL.md` 阶段四。
+所有配图默认通过项目内置 **`scripts/generate_image.py`** 生成,统一使用手绘蓝色信息图风格。具体 prompt 模板和风格要点见 `SKILL.md` 阶段四。
+
+项目内置生图脚本示例:
+
+```bash
+python3 scripts/generate_image.py \
+  --account main \
+  --provider gemini-proxy \
+  --prompt "A hand-drawn blue infographic about MCP servers" \
+  --image ./images/01.png
+```
+
+Gemini CLI / chat 代理环境变量:
+
+```bash
+image_generation:
+  generator: "baoyu-image-gen"
+  gemini_proxy:
+    base_url: "https://cli.sora.locker/"
+    api_key: "sk-..."
+    image_model: "gemini-2.5-flash"
+```
+
+切换到 Web 登录版 Gemini:
+
+```yaml
+accounts:
+  main:
+    image_generator: "baoyu-danger-gemini-web"
+```
+
+也可单次命令覆盖:
+
+```bash
+python3 scripts/generate_image.py \
+  --generator baoyu-danger-gemini-web \
+  --prompt "A hand-drawn blue infographic about MCP servers" \
+  --image ./images/01.png
+```
 
 ## 常见问题
 
 | 错误 | 原因 | 解决方法 |
 |------|------|----------|
-| `ConfigError: 未找到 accounts.yaml` | 配置文件不存在 | 复制 `accounts.yaml.example` 到 `accounts.yaml` 并填值 |
+| `ConfigError: 未找到 wechat-publisher.yaml / accounts.yaml` | 配置文件不存在 | 复制 `wechat-publisher.yaml.example` 到 `wechat-publisher.yaml` 并填值 |
 | `ConfigError: 账号 'xxx' 缺少 app_id` | 账号条目不完整 | 补齐 `app_id` / `app_secret` |
 | `40164` IP不在白名单 | 机器 IP 未添加白名单 | `curl ifconfig.me` 获取 IP,添加到公众平台 |
-| `40001` access_token无效 | 凭证错误或 token 过期 | 检查 `accounts.yaml` 中的 AppID/AppSecret |
+| `40001` access_token无效 | 凭证错误或 token 过期 | 检查 `wechat-publisher.yaml` 中的 AppID/AppSecret |
 | `40009` 图片大小超限 | 图片超过 10MB | 压缩图片后重试 |
 | `45166` 内容不合规 | 文章内容触发平台过滤 | 检查是否包含敏感词或特殊HTML标签 |
 | `48001` 接口未授权 | 公众号类型不支持 | 需要已认证的服务号或订阅号 |
@@ -442,7 +519,7 @@ pip install pytest --break-system-packages
 python3 -m pytest tests/ -v
 ```
 
-测试覆盖 `config.py`(accounts.yaml 解析 + ConfigError)、`ai_score.py`(5 维打分) 和 `html_converter.py`(转换安全性 + 行内标色)。
+测试覆盖 `config.py`(统一配置解析 + ConfigError)、`ai_score.py`(5 维打分) 和 `html_converter.py`(转换安全性 + 行内标色)。
 
 ## License
 

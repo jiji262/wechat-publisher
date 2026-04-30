@@ -38,6 +38,89 @@ def test_get_config_explicit_account(tmp_accounts_yaml):
     assert cfg["theme"] == "minimal-mono"
 
 
+def test_unified_config_takes_priority_over_legacy_accounts(tmp_path, monkeypatch):
+    """wechat-publisher.yaml should be the preferred single config file."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    (tmp_path / "accounts.yaml").write_text(textwrap.dedent("""\
+        default: legacy
+        accounts:
+          legacy:
+            name: "Legacy"
+            app_id: "wx_legacy"
+            app_secret: "legacy_secret"
+            author: "legacy"
+    """), encoding="utf-8")
+    (tmp_path / "wechat-publisher.yaml").write_text(textwrap.dedent("""\
+        default: main
+        accounts:
+          main:
+            name: "Unified Main"
+            app_id: "wx_unified"
+            app_secret: "unified_secret"
+            author: "飞哥"
+            theme: "refined-blue"
+        image_generation:
+          generator: "baoyu-danger-gemini-web"
+    """), encoding="utf-8")
+
+    import config
+
+    config.set_account(None)
+    cfg = config.get_config()
+    assert cfg["account_key"] == "main"
+    assert cfg["app_id"] == "wx_unified"
+    assert cfg["image_generator"] == "baoyu-danger-gemini-web"
+
+
+def test_load_env_reads_unified_image_and_integration_config(tmp_path, monkeypatch):
+    """load_env() should export unified YAML settings as process env fallbacks."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    for key in (
+        "WECHATSYNC_MCP_TOKEN",
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+        "OPENAI_IMAGE_MODEL",
+        "GEMINI_PROXY_API_KEY",
+        "GEMINI_PROXY_BASE_URL",
+        "GEMINI_PROXY_IMAGE_MODEL",
+        "WECHAT_PUBLISHER_IMAGE_GENERATOR",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    (tmp_path / "wechat-publisher.yaml").write_text(textwrap.dedent("""\
+        default: main
+        accounts:
+          main:
+            name: "Unified Main"
+            app_id: "wx_unified"
+            app_secret: "unified_secret"
+            author: "飞哥"
+        image_generation:
+          generator: "baoyu-image-gen"
+          openai:
+            api_key: "sk_openai"
+            base_url: "https://api.example/v1"
+            image_model: "gpt-image-1"
+          gemini_proxy:
+            api_key: "cr_proxy"
+            base_url: "https://proxy.example"
+            image_model: "google/gemini-3-pro-image-preview"
+        integrations:
+          wechatsync_mcp_token: "sync_token"
+    """), encoding="utf-8")
+
+    import config
+
+    config.load_env()
+    assert config.os.environ["WECHAT_PUBLISHER_IMAGE_GENERATOR"] == "baoyu-image-gen"
+    assert config.os.environ["OPENAI_API_KEY"] == "sk_openai"
+    assert config.os.environ["GEMINI_PROXY_BASE_URL"] == "https://proxy.example"
+    assert config.os.environ["WECHATSYNC_MCP_TOKEN"] == "sync_token"
+
+
 def test_set_account_affects_get_config(tmp_accounts_yaml):
     """set_account() should stick as a global selection until reset."""
     import config

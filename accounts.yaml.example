@@ -21,6 +21,8 @@ accounts:
     # 可选:贴图(newspic)模式的配图风格 —— 建议用高密度手绘水彩信息图
     #   infographic-warm(默认,暖黄参考风) | infographic-blue(冷蓝) | infographic-dark(深夜) | infographic-mint(薄荷)
     # newspic_image_style: "infographic-warm"
+    # 可选:生图后端。默认 baoyu-image-gen; 如需使用 Web 登录版 Gemini,改为 baoyu-danger-gemini-web
+    # image_generator: "baoyu-image-gen"
     # 可选:文章作者简介(部分平台显示在文末)
     # voice: |
     #   飞哥，独立开发者，专注 AI 与效率工具。

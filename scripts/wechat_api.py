@@ -3,7 +3,7 @@
 微信公众号 API - 对外统一入口(向后兼容的 facade)
 
 实际实现已拆分到:
-  - config.py        账号配置加载(accounts.yaml)
+  - config.py        账号配置加载(wechat-publisher.yaml / accounts.yaml)
   - wechat_token.py  access_token 获取与缓存
   - api.py           图片上传 / 草稿 / 发布
 
@@ -11,7 +11,7 @@
   1. 重新导出上述三个模块的公共 API(保持 `from wechat_api import xxx` 不变)
   2. 提供命令行入口(`python3 scripts/wechat_api.py list-accounts` 等)
 
-⚠️ 本版本起,.env 不再用于微信凭证。accounts.yaml 是唯一可信来源。
+⚠️ 推荐使用 wechat-publisher.yaml 统一管理配置；accounts.yaml 仅保留兼容。
 """
 
 # 按依赖顺序 re-export
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     import sys
 
     parser = argparse.ArgumentParser(description="微信公众号 API 工具")
-    parser.add_argument("--account", help="指定公众号账号(对应 accounts.yaml 中的账号名)")
+    parser.add_argument("--account", help="指定公众号账号(对应 wechat-publisher.yaml 中的账号名)")
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("list-accounts", help="列出所有已配置的账号")
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         if args.command == "list-accounts":
             accounts = list_accounts()
             if not accounts:
-                print("未找到任何账号配置。请参考 accounts.yaml.example 创建 accounts.yaml。")
+                print("未找到任何账号配置。请参考 wechat-publisher.yaml.example 创建 wechat-publisher.yaml。")
             else:
                 print(f"已配置 {len(accounts)} 个账号:")
                 for acc in accounts:
