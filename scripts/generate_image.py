@@ -8,9 +8,6 @@
     image_generation:
       generator: baoyu-danger-gemini-web
 
-也可以用环境变量覆盖:
-
-    WECHAT_PUBLISHER_IMAGE_GENERATOR=baoyu-danger-gemini-web
 """
 
 from __future__ import annotations
@@ -22,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from config import ConfigError, get_config, load_env
+from config import ConfigError, get_config, get_global_image_generator, load_env
 
 
 DEFAULT_GENERATOR = "baoyu-image-gen"
@@ -33,36 +30,17 @@ def _script_dir() -> Path:
     return Path(__file__).resolve().parent
 
 
-def _load_image_env() -> None:
-    candidates = [
-        Path.home() / ".wechat-publisher" / "image-gen.env",
-        Path.cwd() / ".image-gen.env",
-        Path.cwd() / ".env",
-    ]
-    for file in candidates:
-        if not file.exists():
-            continue
-        for raw in file.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            os.environ.setdefault(key, value)
-
-
 def _resolve_generator(account: Optional[str], cli_value: Optional[str]) -> str:
     if cli_value:
         generator = cli_value
-    elif os.environ.get("WECHAT_PUBLISHER_IMAGE_GENERATOR"):
-        generator = os.environ["WECHAT_PUBLISHER_IMAGE_GENERATOR"]
     else:
         generator = ""
         try:
             generator = get_config(account).get("image_generator", "") or ""
         except ConfigError:
             generator = ""
+        if not generator:
+            generator = get_global_image_generator()
 
     generator = generator.strip() or DEFAULT_GENERATOR
     if generator not in GENERATORS:
@@ -119,7 +97,6 @@ def _danger_gemini_web_args(args: argparse.Namespace) -> List[str]:
 
 def build_command(args: argparse.Namespace) -> tuple[str, List[str]]:
     load_env()
-    _load_image_env()
     generator = _resolve_generator(args.account, args.generator)
     scripts = _script_dir()
 

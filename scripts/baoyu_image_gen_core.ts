@@ -1,6 +1,7 @@
 import path from "node:path";
-import { homedir } from "node:os";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 export type Provider = "openai" | "gemini-proxy";
 export type Quality = "normal" | "2k";
@@ -42,44 +43,113 @@ type ChatCompletionResult = {
   }>;
 };
 
-export async function loadEnv(): Promise<void> {
-  const cwd = process.cwd();
-  const home = homedir();
-  const envFiles = [
-    path.join(home, ".wechat-publisher", "image-gen.env"),
-    path.join(cwd, ".image-gen.env"),
-    path.join(cwd, ".env"),
-  ];
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SKILL_ROOT = path.resolve(SCRIPT_DIR, "..");
+const CONFIG_PATH = path.join(SKILL_ROOT, "wechat-publisher.yaml");
+const CONFIG_EXPORT_KEYS = [
+  "WECHAT_PUBLISHER_IMAGE_GENERATOR",
+  "OPENAI_API_KEY",
+  "OPENAI_BASE_URL",
+  "OPENAI_IMAGE_MODEL",
+  "GEMINI_PROXY_API_KEY",
+  "GEMINI_PROXY_BASE_URL",
+  "GEMINI_PROXY_IMAGE_MODEL",
+  "GEMINI_WEB_DATA_DIR",
+  "GEMINI_WEB_COOKIE_PATH",
+  "GEMINI_WEB_CHROME_PROFILE_DIR",
+  "GEMINI_WEB_CHROME_PATH",
+  "WECHATSYNC_MCP_TOKEN",
+] as const;
 
-  for (const file of envFiles) {
-    const entries = await loadEnvFile(file);
-    for (const [key, value] of Object.entries(entries)) {
-      if (!process.env[key]) process.env[key] = value;
-    }
-  }
+function hasConfiguredProviderEnv(): boolean {
+  return Boolean(process.env.GEMINI_PROXY_API_KEY || process.env.OPENAI_API_KEY);
 }
 
-async function loadEnvFile(filePath: string): Promise<Record<string, string>> {
-  try {
-    const content = await readFile(filePath, "utf8");
-    const env: Record<string, string> = {};
+function hasCanonicalConfigFile(): boolean {
+  return existsSync(CONFIG_PATH);
+}
 
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eq = trimmed.indexOf("=");
-      if (eq < 0) continue;
-      const key = trimmed.slice(0, eq).trim();
-      let value = trimmed.slice(eq + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      env[key] = value;
+function hasLoadedProviderEnv(
+  loaded: Partial<Record<(typeof CONFIG_EXPORT_KEYS)[number], string | null>>
+): boolean {
+  return Boolean(loaded.OPENAI_API_KEY || loaded.GEMINI_PROXY_API_KEY);
+}
+
+export async function loadEnv(): Promise<void> {
+  if (typeof Bun === "undefined") return;
+
+  const python = `
+import json
+import os
+import sys
+from pathlib import Path
+
+keys = ${JSON.stringify([...CONFIG_EXPORT_KEYS])}
+sys.path.insert(0, str(Path.cwd() / "scripts"))
+
+for key in keys:
+    os.environ.pop(key, None)
+
+import config  # noqa: E402
+
+config.load_env()
+print(json.dumps({key: os.environ.get(key) for key in keys}))
+`.trim();
+
+  const result = Bun.spawnSync({
+    cmd: ["python3", "-c", python],
+    cwd: SKILL_ROOT,
+    env: process.env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  if (result.exitCode !== 0) {
+    const stderr = Buffer.from(result.stderr).toString("utf8").trim();
+    if (!hasCanonicalConfigFile() && hasConfiguredProviderEnv()) return;
+    throw new Error(stderr || "Failed to load wechat-publisher.yaml via scripts/config.py");
+  }
+
+  const stderr = Buffer.from(result.stderr).toString("utf8").trim();
+  if (stderr) {
+    throw new Error(stderr);
+  }
+
+  const output = Buffer.from(result.stdout).toString("utf8").trim();
+  if (!output) {
+    if (!hasCanonicalConfigFile() && hasConfiguredProviderEnv()) return;
+    throw new Error("wechat-publisher.yaml did not export any image provider settings");
+  }
+
+  try {
+    const loaded = JSON.parse(output) as Partial<Record<(typeof CONFIG_EXPORT_KEYS)[number], string | null>>;
+    const hasCanonicalConfig = hasCanonicalConfigFile();
+    if (hasCanonicalConfig && !hasLoadedProviderEnv(loaded)) {
+      throw new Error(
+        "wechat-publisher.yaml does not configure OPENAI_API_KEY or GEMINI_PROXY_API_KEY"
+      );
     }
 
-    return env;
-  } catch {
-    return {};
+    for (const key of CONFIG_EXPORT_KEYS) {
+      const value = loaded[key];
+      if (hasCanonicalConfig) {
+        if (value) process.env[key] = value;
+        else delete process.env[key];
+        continue;
+      }
+      if (value && !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+    return;
+  }
+  catch (error) {
+    if (!hasCanonicalConfigFile() && hasConfiguredProviderEnv()) return;
+    throw new Error(
+      error instanceof Error
+        ? `Failed to parse config exports: ${error.message}`
+        : "Failed to parse config exports"
+    );
   }
 }
 

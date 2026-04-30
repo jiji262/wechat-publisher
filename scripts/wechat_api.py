@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """
-微信公众号 API - 对外统一入口(向后兼容的 facade)
+微信公众号 API - 对外统一入口 facade
 
 实际实现已拆分到:
-  - config.py        账号配置加载(wechat-publisher.yaml / accounts.yaml)
+  - config.py        账号配置加载(wechat-publisher.yaml)
   - wechat_token.py  access_token 获取与缓存
   - api.py           图片上传 / 草稿 / 发布
 
 本文件只做两件事:
   1. 重新导出上述三个模块的公共 API(保持 `from wechat_api import xxx` 不变)
   2. 提供命令行入口(`python3 scripts/wechat_api.py list-accounts` 等)
-
-⚠️ 推荐使用 wechat-publisher.yaml 统一管理配置；accounts.yaml 仅保留兼容。
 """
 
 # 按依赖顺序 re-export

@@ -24,12 +24,12 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 
 # ---------------------------------------------------------------------------
-# accounts.yaml fixture
+# wechat-publisher.yaml fixture
 # ---------------------------------------------------------------------------
 
-# Minimal but realistic accounts.yaml content — mirrors accounts.yaml.example
-# just enough for config.py to parse successfully. No real credentials.
-_MIN_ACCOUNTS_YAML = textwrap.dedent(
+# Minimal but realistic wechat-publisher.yaml content.
+# Just enough for config.py to parse successfully. No real credentials.
+_MIN_CONFIG_YAML = textwrap.dedent(
     """\
     default: main
 
@@ -54,30 +54,27 @@ _MIN_ACCOUNTS_YAML = textwrap.dedent(
 
 
 @pytest.fixture
-def tmp_accounts_yaml(tmp_path, monkeypatch):
+def tmp_config_yaml(tmp_path, monkeypatch):
     """
-    Drop a minimal `accounts.yaml` into a temp directory and chdir into it.
-
-    `config._find_accounts_yaml` checks CWD first, so this lets `get_config()`
-    load our fixture file without touching the real project root.
+    Drop a minimal `wechat-publisher.yaml` into a temp directory.
 
     Yields the parsed dict (handy when tests want to double-check what's in
     the file they're testing against).
     """
     import yaml
 
-    yaml_path = tmp_path / "accounts.yaml"
-    yaml_path.write_text(_MIN_ACCOUNTS_YAML, encoding="utf-8")
-    monkeypatch.chdir(tmp_path)
+    yaml_path = tmp_path / "wechat-publisher.yaml"
+    yaml_path.write_text(_MIN_CONFIG_YAML, encoding="utf-8")
 
     # Reset any active account set by a previous test.
     try:
         import config
         config.set_account(None)
+        monkeypatch.setattr(config, "_config_path", lambda: yaml_path)
     except ImportError:
         pass
 
-    data = yaml.safe_load(_MIN_ACCOUNTS_YAML)
+    data = yaml.safe_load(_MIN_CONFIG_YAML)
     yield data
 
     # Teardown: clear active account again so leakage doesn't affect later tests.
@@ -89,14 +86,11 @@ def tmp_accounts_yaml(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def write_accounts_yaml(tmp_path, monkeypatch):
+def write_config_yaml(tmp_path, monkeypatch):
     """
-    Like `tmp_accounts_yaml` but returns a writer function so a test can
-    supply custom YAML content (e.g. to test sync_platforms variants, or
-    a missing default).
+    Like `tmp_config_yaml` but returns a writer function so a test can
+    supply custom YAML content.
     """
-    monkeypatch.chdir(tmp_path)
-
     try:
         import config
         config.set_account(None)
@@ -104,8 +98,14 @@ def write_accounts_yaml(tmp_path, monkeypatch):
         pass
 
     def _write(yaml_text: str) -> Path:
-        p = tmp_path / "accounts.yaml"
+        p = tmp_path / "wechat-publisher.yaml"
         p.write_text(yaml_text, encoding="utf-8")
+        try:
+            import config
+            config.set_account(None)
+            monkeypatch.setattr(config, "_config_path", lambda: p)
+        except ImportError:
+            pass
         return p
 
     yield _write

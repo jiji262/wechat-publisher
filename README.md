@@ -42,11 +42,10 @@ wechat-publisher/
 ├── README.md                   # 项目说明
 ├── wechat-publisher.yaml       # 统一配置(公众号/生图/同步,gitignored)
 ├── wechat-publisher.yaml.example # 统一配置模板
-├── accounts.yaml               # 旧账号配置(兼容 fallback,gitignored)
 ├── .gitignore
 ├── scripts/
 │   ├── publish.py              # 一键发布主流程(串联所有模块 + AI 味 gate)
-│   ├── wechat_api.py           # 向后兼容 facade + CLI 入口(重导出 config/token/api)
+│   ├── wechat_api.py           # 微信 API facade + CLI 入口(重导出 config/token/api)
 │   ├── config.py               # wechat-publisher.yaml 加载 + ConfigError
 │   ├── wechat_token.py         # access_token 获取与本地缓存
 │   ├── api.py                  # 图片上传 / 草稿创建 / 发布
@@ -106,26 +105,13 @@ image_generation:
   gemini_proxy:
     base_url: "https://website-data-analysis.replit.app"
     api_key: "cr_..."
-    image_model: "google/gemini-3-pro-image-preview"
+    image_model: "gemini-3-pro-image-preview"
 
 integrations:
   wechatsync_mcp_token: ""
 ```
 
-> **注意**:`wechat-publisher.yaml` 是新的统一配置入口。旧 `accounts.yaml` / `.env` / `image-gen.env` 仍兼容,但只作为 fallback。
-
-`wechat-publisher.yaml` 查找优先级:
-
-1. 当前工作目录 `wechat-publisher.yaml`
-2. skill 根目录 `wechat-publisher.yaml`
-3. `~/.wechat-publisher/wechat-publisher.yaml`
-
-如果你想把配置做成机器级共享,可以放到:
-
-```bash
-mkdir -p ~/.wechat-publisher
-cp wechat-publisher.yaml ~/.wechat-publisher/wechat-publisher.yaml
-```
+`wechat-publisher.yaml` 是唯一支持的配置文件,只从 skill 根目录读取。
 
 ### 3.1 配置生图后端
 
@@ -141,7 +127,7 @@ cp wechat-publisher.yaml ~/.wechat-publisher/wechat-publisher.yaml
 1. `baoyu-image-gen`:默认,支持 OpenAI Images 和 Gemini CLI / chat 代理
 2. `baoyu-danger-gemini-web`:Web 登录版 Gemini,使用 `scripts/baoyu_danger_gemini_web/`,需要本机已保存 Gemini Web 登录 cookie
 
-所有生图凭证都建议放在 `wechat-publisher.yaml` 的 `image_generation` 下。旧 `~/.wechat-publisher/image-gen.env`、`.image-gen.env`、`.env` 仍会兼容读取。
+所有生图凭证都放在 `wechat-publisher.yaml` 的 `image_generation` 下。
 
 ### 4. 验证连接
 
@@ -410,7 +396,7 @@ python3 scripts/html_converter.py article.md --theme my-brand -o preview.html
 
 作者和主题从 `wechat-publisher.yaml` 对应账号自动读取,也可通过 `--author` 覆盖。
 
-### wechat_api.py - 微信 API 向后兼容 facade
+### wechat_api.py - 微信 API facade
 
 本文件现在只是一个 facade,重导出以下模块并提供 CLI(`python3 scripts/wechat_api.py list-accounts / token / upload-thumb / draft`):
 
@@ -491,7 +477,7 @@ python3 scripts/generate_image.py \
 
 | 错误 | 原因 | 解决方法 |
 |------|------|----------|
-| `ConfigError: 未找到 wechat-publisher.yaml / accounts.yaml` | 配置文件不存在 | 复制 `wechat-publisher.yaml.example` 到 `wechat-publisher.yaml` 并填值 |
+| `ConfigError: 未找到 wechat-publisher.yaml` | 配置文件不存在 | 复制 `wechat-publisher.yaml.example` 到 `wechat-publisher.yaml` 并填值 |
 | `ConfigError: 账号 'xxx' 缺少 app_id` | 账号条目不完整 | 补齐 `app_id` / `app_secret` |
 | `40164` IP不在白名单 | 机器 IP 未添加白名单 | `curl ifconfig.me` 获取 IP,添加到公众平台 |
 | `40001` access_token无效 | 凭证错误或 token 过期 | 检查 `wechat-publisher.yaml` 中的 AppID/AppSecret |

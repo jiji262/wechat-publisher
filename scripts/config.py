@@ -2,8 +2,7 @@
 """
 统一配置管理。
 
-优先读取 wechat-publisher.yaml。旧 accounts.yaml / .env / image-gen.env
-保留兼容,但新配置应尽量集中到 wechat-publisher.yaml。
+仅支持 skill 根目录下的 wechat-publisher.yaml。
 
 用法:
     from config import set_account, get_config, ConfigError
@@ -51,26 +50,14 @@ def get_account_name() -> Optional[str]:
 
 
 # ============================================================
-# 统一配置 / .env 加载
+# 统一配置加载
 # ============================================================
 
 UNIFIED_CONFIG_NAME = "wechat-publisher.yaml"
-LEGACY_ACCOUNTS_NAME = "accounts.yaml"
 
 
-def _config_candidates(filename: str) -> List[Path]:
-    return [
-        Path.cwd() / filename,
-        Path(__file__).parent.parent / filename,
-        Path.home() / ".wechat-publisher" / filename,
-    ]
-
-
-def _find_yaml(filename: str) -> Optional[Path]:
-    for p in _config_candidates(filename):
-        if p.exists():
-            return p
-    return None
+def _config_path() -> Path:
+    return Path(__file__).parent.parent / UNIFIED_CONFIG_NAME
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
@@ -80,8 +67,9 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
 
 
 def _find_unified_yaml() -> Optional[Path]:
-    """按优先级查找 wechat-publisher.yaml: CWD → skill 根 → $HOME/.wechat-publisher/。"""
-    return _find_yaml(UNIFIED_CONFIG_NAME)
+    """仅查找 skill 根目录下的 wechat-publisher.yaml。"""
+    path = _config_path()
+    return path if path.exists() else None
 
 
 def _load_unified_yaml() -> Dict[str, Any]:
@@ -134,59 +122,20 @@ def _load_unified_env() -> None:
         _set_env_if_present("GEMINI_WEB_CHROME_PATH", gemini_web.get("chrome_path"))
 
 
-def load_env(env_path: Optional[Path] = None) -> None:
+def load_env() -> None:
     """
-    加载辅助环境变量到 os.environ(不覆盖已有值)。
-
-    优先从 wechat-publisher.yaml 的 integrations / image_generation 加载。
-    旧 .env 仍兼容,但只建议作为历史 fallback。
+    从 wechat-publisher.yaml 加载辅助环境变量到 os.environ(不覆盖已有值)。
     """
     _load_unified_env()
 
-    if env_path is None:
-        candidates = [
-            Path.cwd() / ".env",
-            Path(__file__).parent.parent / ".env",
-            Path.home() / ".wechat-publisher" / "image-gen.env",
-            Path.home() / ".env",
-        ]
-        for p in candidates:
-            if p.exists():
-                env_path = p
-                break
 
-    if env_path is None or not Path(env_path).exists():
-        return
-
-    with open(env_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            os.environ.setdefault(key, value)
-
-
-# ============================================================
-# wechat-publisher.yaml / accounts.yaml
-# ============================================================
-
-def _find_accounts_yaml() -> Optional[Path]:
-    """兼容旧接口:优先返回统一配置,再返回旧 accounts.yaml。"""
-    return _find_unified_yaml() or _find_yaml(LEGACY_ACCOUNTS_NAME)
-
-
-def _load_accounts_yaml(yaml_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-    """加载统一配置或旧 accounts.yaml。返回 None 表示找不到文件。"""
+def _load_config_yaml(yaml_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """加载 skill 根目录 wechat-publisher.yaml。返回 None 表示找不到文件。"""
     if yaml_path is None:
-        yaml_path = _find_accounts_yaml()
+        yaml_path = _find_unified_yaml()
     if yaml_path is None:
         return None
-
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    return _load_yaml(yaml_path)
 
 
 def list_accounts() -> List[Dict[str, Any]]:
@@ -196,7 +145,7 @@ def list_accounts() -> List[Dict[str, Any]]:
     返回统一 schema:
         {"key": str, "name": str, "app_id": str(截短), "author": str, "is_default": bool}
     """
-    config = _load_accounts_yaml()
+    config = _load_config_yaml()
     if not config or "accounts" not in config:
         return []
 
@@ -214,6 +163,19 @@ def list_accounts() -> List[Dict[str, Any]]:
     return result
 
 
+def get_global_image_generator() -> str:
+    """读取全局 image_generation.generator；缺失时返回空串。"""
+    yaml_config = _load_config_yaml()
+    if not yaml_config:
+        return ""
+
+    image_generation = yaml_config.get("image_generation") or {}
+    if not isinstance(image_generation, dict):
+        return ""
+
+    return str(image_generation.get("generator", "") or "").strip()
+
+
 def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
     """
     获取当前账号的完整配置。
@@ -221,7 +183,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
     优先级:
       1. account_name 参数
       2. set_account() 设置的全局账号
-      3. wechat-publisher.yaml / accounts.yaml 的 `default` 字段
+      3. wechat-publisher.yaml 的 `default` 字段
 
     Raises:
         ConfigError: 配置文件缺失、账号不存在、或缺少必要字段(app_id/app_secret)
@@ -241,10 +203,10 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
     """
     account_name = account_name or _active_account
 
-    yaml_config = _load_accounts_yaml()
+    yaml_config = _load_config_yaml()
     if not yaml_config or "accounts" not in yaml_config or not yaml_config["accounts"]:
         raise ConfigError(
-            "未找到 wechat-publisher.yaml / accounts.yaml 或文件为空。请参考 wechat-publisher.yaml.example 创建配置。"
+            "未找到 wechat-publisher.yaml 或文件为空。请参考 wechat-publisher.yaml.example 创建配置。"
         )
 
     if account_name is None:
@@ -253,7 +215,7 @@ def get_config(account_name: Optional[str] = None) -> Dict[str, Any]:
     if account_name is None:
         available = ", ".join(yaml_config["accounts"].keys())
         raise ConfigError(
-            f"未指定账号且 wechat-publisher.yaml / accounts.yaml 里无 default。可用账号: {available}"
+            f"未指定账号且 wechat-publisher.yaml 里无 default。可用账号: {available}"
         )
 
     if account_name not in yaml_config["accounts"]:
@@ -359,7 +321,7 @@ def resolve_image_style(
     按优先级解析最终使用的配图风格:
       1. CLI 参数(--image-style)
       2. brief.md / article.md 的 frontmatter image_style 字段
-      3. wechat-publisher.yaml / accounts.yaml 对应账号的 image_style 字段
+      3. wechat-publisher.yaml 对应账号的 image_style 字段
       4. 全局默认:news 模式 → DEFAULT_IMAGE_STYLE(hand-drawn-blue);
                    newspic 模式 → DEFAULT_NEWSPIC_IMAGE_STYLE(infographic-warm)
 

@@ -44,18 +44,16 @@ description: |
 cp wechat-publisher.yaml.example wechat-publisher.yaml
 ```
 
-真实配置文件名是 `wechat-publisher.yaml`,已被 `.gitignore` 忽略。旧 `accounts.yaml` / `.env` / `image-gen.env` 仍兼容,但只作为历史 fallback。
+真实配置文件名是 `wechat-publisher.yaml`,已被 `.gitignore` 忽略。这是唯一支持的配置文件。
 
 #### 1) 统一配置文件位置
 
-可放置位置按优先级查找:
+配置文件固定放在 skill 根目录:
 
-1. 当前工作目录 `wechat-publisher.yaml`
-2. skill 根目录 `wechat-publisher.yaml`
-3. `~/.wechat-publisher/wechat-publisher.yaml`
+1. `wechat-publisher/wechat-publisher.yaml`
 
 代码证据在 `scripts/config.py`:
-- `_find_unified_yaml()` 负责按上述顺序查找
+- `_find_unified_yaml()` 只查 skill 根目录
 - `get_config()` 强制要求账号下必须有 `app_id` 和 `app_secret`
 - `load_env()` 会从统一配置里的 `image_generation` / `integrations` 写入环境变量
 
@@ -79,7 +77,7 @@ image_generation:
   gemini_proxy:
     base_url: "https://website-data-analysis.replit.app"
     api_key: "cr_..."
-    image_model: "google/gemini-3-pro-image-preview"
+    image_model: "gemini-3-pro-image-preview"
 
 integrations:
   wechatsync_mcp_token: ""
@@ -92,12 +90,6 @@ integrations:
 ```yaml
 image_generation:
   generator: "baoyu-danger-gemini-web"
-```
-
-也可以临时用环境变量覆盖:
-
-```bash
-WECHAT_PUBLISHER_IMAGE_GENERATOR=baoyu-danger-gemini-web
 ```
 
 ```bash
@@ -858,9 +850,9 @@ python3 scripts/publish.py --account main --type newspic --brief brief.md --imag
 | 脚本 | 用途 |
 |---|---|
 | `publish.py` | 完整发布流程(一键,含 AI 味 gate)。支持 `--type news\|newspic` 双模式 |
-| `generate_image.py` | **统一生图入口** —— 根据 `wechat-publisher.yaml` / 环境变量选择 `baoyu-image-gen` 或 `baoyu-danger-gemini-web` |
+| `generate_image.py` | **统一生图入口** —— 根据 `wechat-publisher.yaml` 选择 `baoyu-image-gen` 或 `baoyu-danger-gemini-web` |
 | `newspic_build.py` | **贴图拆卡器** —— brief.md → card_plan.json(Claude 再按 prompt 生图) |
-| `wechat_api.py` | **facade(向后兼容)** —— 重导出下述模块 + 提供 CLI |
+| `wechat_api.py` | **facade** —— 重导出下述模块 + 提供 CLI |
 | `config.py` | (内部)`wechat-publisher.yaml` + 配图风格加载 + `set_account` / `get_config` / `resolve_image_style` |
 | `wechat_token.py` | (内部)`get_access_token`,本地文件缓存 |
 | `api.py` | (内部)图片上传(3 种:封面 / 正文 / newspic 素材)/ 草稿 / 发布 |

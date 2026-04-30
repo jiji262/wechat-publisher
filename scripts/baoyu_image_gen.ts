@@ -34,12 +34,7 @@ Options:
 
 Environment:
   OPENAI_API_KEY / OPENAI_BASE_URL / OPENAI_IMAGE_MODEL
-  GEMINI_PROXY_API_KEY / GEMINI_PROXY_BASE_URL / GEMINI_PROXY_IMAGE_MODEL
-
-Env file load order:
-  ~/.wechat-publisher/image-gen.env
-  <cwd>/.image-gen.env
-  <cwd>/.env`);
+  GEMINI_PROXY_API_KEY / GEMINI_PROXY_BASE_URL / GEMINI_PROXY_IMAGE_MODEL`);
 }
 
 function parseArgs(argv: string[]): CliArgs {

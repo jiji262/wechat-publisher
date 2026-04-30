@@ -16,7 +16,7 @@ import textwrap
 import pytest
 
 
-def test_get_config_default_account(tmp_accounts_yaml):
+def test_get_config_default_account(tmp_config_yaml):
     """No --account specified → returns the account named by `default:`."""
     import config
 
@@ -27,7 +27,7 @@ def test_get_config_default_account(tmp_accounts_yaml):
     assert cfg["theme"] == "refined-blue"
 
 
-def test_get_config_explicit_account(tmp_accounts_yaml):
+def test_get_config_explicit_account(tmp_config_yaml):
     """Passing account_name explicitly should override the default."""
     import config
 
@@ -38,21 +38,10 @@ def test_get_config_explicit_account(tmp_accounts_yaml):
     assert cfg["theme"] == "minimal-mono"
 
 
-def test_unified_config_takes_priority_over_legacy_accounts(tmp_path, monkeypatch):
-    """wechat-publisher.yaml should be the preferred single config file."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("HOME", str(tmp_path))
-
-    (tmp_path / "accounts.yaml").write_text(textwrap.dedent("""\
-        default: legacy
-        accounts:
-          legacy:
-            name: "Legacy"
-            app_id: "wx_legacy"
-            app_secret: "legacy_secret"
-            author: "legacy"
-    """), encoding="utf-8")
-    (tmp_path / "wechat-publisher.yaml").write_text(textwrap.dedent("""\
+def test_unified_config_reads_wechat_publisher_yaml(tmp_path, monkeypatch):
+    """wechat-publisher.yaml should be the single supported config source."""
+    yaml_path = tmp_path / "wechat-publisher.yaml"
+    yaml_path.write_text(textwrap.dedent("""\
         default: main
         accounts:
           main:
@@ -68,6 +57,7 @@ def test_unified_config_takes_priority_over_legacy_accounts(tmp_path, monkeypatc
     import config
 
     config.set_account(None)
+    monkeypatch.setattr(config, "_config_path", lambda: yaml_path)
     cfg = config.get_config()
     assert cfg["account_key"] == "main"
     assert cfg["app_id"] == "wx_unified"
@@ -76,8 +66,6 @@ def test_unified_config_takes_priority_over_legacy_accounts(tmp_path, monkeypatc
 
 def test_load_env_reads_unified_image_and_integration_config(tmp_path, monkeypatch):
     """load_env() should export unified YAML settings as process env fallbacks."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("HOME", str(tmp_path))
     for key in (
         "WECHATSYNC_MCP_TOKEN",
         "OPENAI_API_KEY",
@@ -90,7 +78,8 @@ def test_load_env_reads_unified_image_and_integration_config(tmp_path, monkeypat
     ):
         monkeypatch.delenv(key, raising=False)
 
-    (tmp_path / "wechat-publisher.yaml").write_text(textwrap.dedent("""\
+    yaml_path = tmp_path / "wechat-publisher.yaml"
+    yaml_path.write_text(textwrap.dedent("""\
         default: main
         accounts:
           main:
@@ -107,13 +96,14 @@ def test_load_env_reads_unified_image_and_integration_config(tmp_path, monkeypat
           gemini_proxy:
             api_key: "cr_proxy"
             base_url: "https://proxy.example"
-            image_model: "google/gemini-3-pro-image-preview"
+            image_model: "gemini-3-pro-image-preview"
         integrations:
           wechatsync_mcp_token: "sync_token"
     """), encoding="utf-8")
 
     import config
 
+    monkeypatch.setattr(config, "_config_path", lambda: yaml_path)
     config.load_env()
     assert config.os.environ["WECHAT_PUBLISHER_IMAGE_GENERATOR"] == "baoyu-image-gen"
     assert config.os.environ["OPENAI_API_KEY"] == "sk_openai"
@@ -121,7 +111,7 @@ def test_load_env_reads_unified_image_and_integration_config(tmp_path, monkeypat
     assert config.os.environ["WECHATSYNC_MCP_TOKEN"] == "sync_token"
 
 
-def test_set_account_affects_get_config(tmp_accounts_yaml):
+def test_set_account_affects_get_config(tmp_config_yaml):
     """set_account() should stick as a global selection until reset."""
     import config
 
@@ -133,7 +123,7 @@ def test_set_account_affects_get_config(tmp_accounts_yaml):
         config.set_account(None)
 
 
-def test_get_config_raises_on_missing_account(tmp_accounts_yaml):
+def test_get_config_raises_on_missing_account(tmp_config_yaml):
     """Asking for a non-existent account should raise ConfigError."""
     import config
     from config import ConfigError
@@ -149,14 +139,9 @@ def test_get_config_raises_on_missing_account(tmp_accounts_yaml):
 
 def test_get_config_raises_on_missing_yaml(tmp_path, monkeypatch):
     """
-    With no accounts.yaml anywhere reachable, get_config must raise ConfigError
+    With no wechat-publisher.yaml reachable, get_config must raise ConfigError
     (never sys.exit — CLI handles exit, library callers handle the exception).
     """
-    # Make the temp dir the CWD, and point HOME at it too so the
-    # $HOME/.wechat-publisher/ fallback also can't find anything.
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("HOME", str(tmp_path))
-
     import config
 
     # Force a cold reload in case earlier tests left module state around.
@@ -164,25 +149,17 @@ def test_get_config_raises_on_missing_yaml(tmp_path, monkeypatch):
 
     from config import ConfigError
 
-    # There's still the skill-root fallback in config.py that points at
-    # ../accounts.yaml. We can't easily delete that file, but we can verify
-    # the *error type* — if the real root yaml resolves, we'll accept
-    # EITHER ConfigError (if it somehow missed) OR a successful config
-    # (since fallback is legitimate). The strict case below covers the
-    # real missing-file behavior by pointing the lookup elsewhere.
-    # So instead, we patch _find_accounts_yaml to return None explicitly,
-    # which is the deterministic "file not found" path.
-    monkeypatch.setattr(config, "_find_accounts_yaml", lambda: None)
+    monkeypatch.setattr(config, "_config_path", lambda: tmp_path / "missing.yaml")
 
     with pytest.raises(ConfigError) as exc:
         config.get_config()
 
-    assert "accounts.yaml" in str(exc.value)
+    assert "wechat-publisher.yaml" in str(exc.value)
 
 
-def test_get_config_raises_on_missing_fields(write_accounts_yaml):
+def test_get_config_raises_on_missing_fields(write_config_yaml):
     """Account with blank app_id / app_secret should raise ConfigError."""
-    write_accounts_yaml(textwrap.dedent("""\
+    write_config_yaml(textwrap.dedent("""\
         default: broken
         accounts:
           broken:
@@ -200,7 +177,7 @@ def test_get_config_raises_on_missing_fields(write_accounts_yaml):
     assert "app_id" in str(exc.value) or "app_secret" in str(exc.value)
 
 
-def test_list_accounts_shape_consistent(tmp_accounts_yaml):
+def test_list_accounts_shape_consistent(tmp_config_yaml):
     """Every dict in list_accounts() output must have the same keys."""
     import config
 
@@ -217,9 +194,9 @@ def test_list_accounts_shape_consistent(tmp_accounts_yaml):
     assert defaults[0]["key"] == "main"
 
 
-def test_sync_platforms_parsed_from_list(write_accounts_yaml):
+def test_sync_platforms_parsed_from_list(write_config_yaml):
     """sync_platforms: [zhihu, juejin] → ['zhihu', 'juejin']."""
-    write_accounts_yaml(textwrap.dedent("""\
+    write_config_yaml(textwrap.dedent("""\
         default: main
         accounts:
           main:
@@ -236,9 +213,9 @@ def test_sync_platforms_parsed_from_list(write_accounts_yaml):
     assert cfg["sync_platforms"] == ["zhihu", "juejin", "csdn"]
 
 
-def test_sync_platforms_parsed_from_string(write_accounts_yaml):
+def test_sync_platforms_parsed_from_string(write_config_yaml):
     """sync_platforms: "zhihu, juejin" (comma-string) → still parses cleanly."""
-    write_accounts_yaml(textwrap.dedent("""\
+    write_config_yaml(textwrap.dedent("""\
         default: main
         accounts:
           main:
@@ -255,9 +232,9 @@ def test_sync_platforms_parsed_from_string(write_accounts_yaml):
     assert cfg["sync_platforms"] == ["zhihu", "juejin", "csdn"]
 
 
-def test_sync_platforms_none_when_missing(write_accounts_yaml):
+def test_sync_platforms_none_when_missing(write_config_yaml):
     """No sync_platforms key → None, not [] (tests can distinguish)."""
-    write_accounts_yaml(textwrap.dedent("""\
+    write_config_yaml(textwrap.dedent("""\
         default: main
         accounts:
           main:
@@ -271,3 +248,4 @@ def test_sync_platforms_none_when_missing(write_accounts_yaml):
 
     cfg = config.get_config()
     assert cfg["sync_platforms"] is None
+

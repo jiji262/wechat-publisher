@@ -6,12 +6,12 @@ dist/
 build/
 .pytest_cache/
 
-# Environment & Credentials
+# Credentials
 .env
 .env.local
 .env.backup
-wechat-publisher.yaml
 accounts.yaml
+wechat-publisher.yaml
 scripts/.token_cache*
 scripts/.token_cache*.json
 

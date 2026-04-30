@@ -1,9 +1,5 @@
 # wechat-publisher 统一配置示例
-# 复制为以下任一位置的 wechat-publisher.yaml:
-#   1. 当前工作目录 wechat-publisher.yaml
-#   2. skill 根目录 wechat-publisher.yaml
-#   3. ~/.wechat-publisher/wechat-publisher.yaml
-#
+# 复制为 skill 根目录下的 wechat-publisher.yaml。
 # 注意:真实文件包含密钥,已被 .gitignore 忽略,不要提交。
 
 default: main
@@ -47,7 +43,7 @@ image_generation:
   gemini_proxy:
     base_url: "https://website-data-analysis.replit.app"
     api_key: "cr_..."
-    image_model: "google/gemini-3-pro-image-preview"
+    image_model: "gemini-3-pro-image-preview"
 
   # baoyu-danger-gemini-web
   gemini_web:
