@@ -2,7 +2,7 @@
   "theme_name": "cyber-neon",
   "description": "赛博科技 - 深色底 + 霓虹青紫,未来科技感,适合黑客 / 赛博朋克 / 前沿科技报道",
   "styles": {
-    "body": "font-family: 'JetBrains Mono', 'Menlo', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #d8e6f0; line-height: 1.85; letter-spacing: 0.4px; word-spacing: 1.5px; padding: 20px 28px; background: #0a0e1a;",
+    "body": "font-family: 'JetBrains Mono', 'Menlo', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 15px; color: #d8e6f0; line-height: 1.85; letter-spacing: 0.4px; word-spacing: 1.5px; padding: 20px 22px; background: #0a0e1a;",
     "h1": "font-size: 22px; font-weight: 800; color: #00e5d0; text-align: left; margin: 34px 0 22px; padding: 0 0 12px 0; border-bottom: 1px solid #00e5d0; letter-spacing: 2px; line-height: 1.4; text-transform: uppercase;",
     "h2": "font-size: 16.5px; font-weight: 800; color: #00e5d0; margin: 40px 0 18px; padding: 8px 14px; background: rgba(0,229,208,0.08); border-left: 3px solid #00e5d0; line-height: 1.5; letter-spacing: 1.5px; text-transform: uppercase;",
     "h3": "font-size: 15px; font-weight: 700; color: #c085ff; margin: 28px 0 12px; padding: 0; letter-spacing: 1px;",

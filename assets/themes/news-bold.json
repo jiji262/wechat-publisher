@@ -2,7 +2,7 @@
   "theme_name": "news-bold",
   "description": "新闻时讯 - 红黑强对比 + 快节奏,信息密度高,适合资讯 / 热点 / 速读类短文",
   "styles": {
-    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #1a1a1a; line-height: 1.8; letter-spacing: 0.3px; word-spacing: 1.5px; padding: 20px 28px; background: #ffffff;",
+    "body": "font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-size: 15.5px; color: #1a1a1a; line-height: 1.8; letter-spacing: 0.3px; word-spacing: 1.5px; padding: 20px 22px; background: #ffffff;",
     "h1": "font-size: 22px; font-weight: 900; color: #1a1a1a; text-align: left; margin: 32px 0 18px; padding: 0 0 14px 0; border-bottom: 3px solid #d4231c; line-height: 1.35; letter-spacing: 0;",
     "h2": "font-size: 17px; font-weight: 900; color: #ffffff; margin: 36px 0 16px; padding: 8px 14px; background: #1a1a1a; border-left: 6px solid #d4231c; line-height: 1.45; letter-spacing: 0.3px; display: inline-block;",
     "h3": "font-size: 15.5px; font-weight: 800; color: #d4231c; margin: 26px 0 12px; padding: 0 0 0 12px; border-left: 4px solid #d4231c; letter-spacing: 0.3px;",

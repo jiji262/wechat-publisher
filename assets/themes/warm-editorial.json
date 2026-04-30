@@ -2,7 +2,7 @@
   "theme_name": "warm-editorial",
   "description": "暖色杂志风 - 栗色 + 米白 + 宋体,温厚的长文阅读感,适合观点 / 随笔 / 生活随笔",
   "styles": {
-    "body": "font-family: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'PingFang SC', serif; font-size: 15.5px; color: #3a2e26; line-height: 1.9; letter-spacing: 0.5px; word-spacing: 2px; padding: 20px 28px; background: #fbf7f0;",
+    "body": "font-family: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'PingFang SC', serif; font-size: 15.5px; color: #3a2e26; line-height: 1.9; letter-spacing: 0.5px; word-spacing: 2px; padding: 20px 22px; background: #fbf7f0;",
     "h1": "font-size: 23px; font-weight: 700; color: #5a2f1a; text-align: center; margin: 38px 0 26px; padding: 0 0 16px 0; letter-spacing: 2px; line-height: 1.45; border-bottom: 1px solid #c9a27d;",
     "h2": "font-size: 18px; font-weight: 700; color: #5a2f1a; margin: 38px 0 20px; padding: 4px 0 10px 0; border-bottom: 2px solid #c9a27d; line-height: 1.5;",
     "h3": "font-size: 16px; font-weight: 700; color: #7a4e3b; margin: 28px 0 12px; padding: 0 0 0 12px; border-left: 3px solid #c9a27d; letter-spacing: 0.5px;",
