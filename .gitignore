@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Credentials
+.env
+.env.local
+.env.backup
+accounts.yaml
+wechat-publisher.yaml
+scripts/.token_cache*
+scripts/.token_cache*.json
+
+# Temp files
+/tmp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated articles — everything is a runtime output, only README survives in git
+article.md
+article.html
+article_preview.html
+generated/*
+!generated/README.md
+
+# IDE / Harness state
+.vscode/
+.idea/
+.gstack/
+.omc/
+.omx/

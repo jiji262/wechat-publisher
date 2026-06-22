@@ -1,0 +1,37 @@
+{
+  "style_name": "quote-card-minimal",
+  "display_name": "黑白金句卡",
+  "description": "黑白两色 + 衬线大字 + 极致留白。一张卡一句金句,像美术馆墙上的引文。适合观点、金句、洞察、哲思类短内容。",
+  "suitable_for": [
+    "aphorisms",
+    "key-quotes",
+    "philosophical-reflection",
+    "opinion-punchline",
+    "closing-statement",
+    "literary-sharing"
+  ],
+  "newspic_ready": true,
+  "article_ready": false,
+  "canvas": {
+    "newspic_aspect": "1:1",
+    "newspic_size": "1080x1080"
+  },
+  "palette": {
+    "background": "#f7f5f0",
+    "primary": "#1a1a1a",
+    "accent": "#8a8a8a",
+    "text": "#1a1a1a"
+  },
+  "typography": {
+    "heading": "衬线中文(思源宋体 Heavy / 方正雅宋 / Noto Serif SC)",
+    "body": "衬线中文 Regular",
+    "weight_contrast": "金句超大 + 署名极小"
+  },
+  "mood": ["serious", "elegant", "contemplative", "literary", "restrained", "timeless"],
+  "prompt_template": {
+    "newspic_card": "Generate a minimalist black-and-white quote card, 1:1 square, Chinese content. Off-white paper background (#f7f5f0) with very subtle paper texture. Central large Chinese quote '{card_main}' in a heavy serif font (思源宋体 Heavy / Noto Serif SC Black style), deep black (#1a1a1a), taking up maybe 50-60% of the card, with generous line spacing. Small gray (#8a8a8a) attribution text '{card_sub}' at the bottom, much smaller than the quote. Optional: a tiny horizontal rule or a small 『』 quotation mark ornament. No illustrations, no color accents beyond grayscale, no decoration. Feel: museum wall text, literary magazine, contemplative, zero noise.",
+    "article_inline": null
+  },
+  "example_reference": "(参考 MoMA / The New Yorker 内页引文排版)",
+  "notes": "只推荐 newspic 模式。用于文章内联图会显得太冷清。tech 账号(葱哥)最适合用这个 —— 冷、静、有分量。"
+}
