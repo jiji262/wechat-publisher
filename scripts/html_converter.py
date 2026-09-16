@@ -199,6 +199,19 @@ INLINE_MARKS = [
 ]
 
 
+def strip_front_matter(md_content: str) -> str:
+    """如果文本以 YAML front matter(--- ... ---)开头,去掉整段 front matter。
+
+    不剥掉的话,`---` 会被当成分隔线、`title: xxx` 会被当成正文段落,
+    草稿开头就多出一坨 meta。
+    """
+    if md_content.lstrip().startswith("---"):
+        m = re.match(r"^\s*---\s*\n(.*?)\n---\s*\n", md_content, flags=re.DOTALL)
+        if m:
+            return md_content[m.end():]
+    return md_content
+
+
 def convert_markdown_to_wechat_html(
     markdown_text, styles=None, highlights=None, divider_text=None, list_style=None
 ):
@@ -224,7 +237,7 @@ def convert_markdown_to_wechat_html(
     if list_style is None:
         list_style = DEFAULT_LIST_STYLE.copy()
 
-    lines = markdown_text.split("\n")
+    lines = strip_front_matter(markdown_text).split("\n")
     html_parts = []
     in_code_block = False
     code_block_content = []

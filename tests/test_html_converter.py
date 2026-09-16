@@ -288,3 +288,38 @@ def test_all_themes_load_without_error():
         for key in ("hl_yellow", "hl_blue", "hl_pink", "hl_green",
                     "em_red", "em_blue", "em_orange"):
             assert key in highlights, f"主题 {name} 缺少 highlights.{key}"
+
+
+def test_front_matter_not_rendered_into_body():
+    """YAML front matter 不能出现在草稿正文里。
+
+    回归:2026-08-10 之前 `---` 被当成分隔线、`title:` 等被当成正文段落,
+    每篇草稿开头都多出一坨 meta。
+    """
+    from html_converter import convert_markdown_to_wechat_html
+
+    md = (
+        "---\n"
+        "title: 标题\n"
+        "account: main\n"
+        "author: 飞哥\n"
+        "theme: sunset-coral\n"
+        "---\n"
+        "\n"
+        "# 标题\n"
+        "\n"
+        "正文第一段。\n"
+    )
+    html_out = convert_markdown_to_wechat_html(md)
+    for leaked in ("title:", "account:", "author:", "theme:", "飞哥"):
+        assert leaked not in html_out, f"front matter 泄漏到正文: {leaked}"
+    assert "正文第一段。" in html_out
+
+
+def test_horizontal_rule_in_body_still_renders():
+    """正文中间的 `---` 仍然是分隔线,不能被 front matter 剥离误伤。"""
+    from html_converter import convert_markdown_to_wechat_html
+
+    html_out = convert_markdown_to_wechat_html("上半段\n\n---\n\n下半段\n")
+    assert "上半段" in html_out and "下半段" in html_out
+    assert "<hr" in html_out
