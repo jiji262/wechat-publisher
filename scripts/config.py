@@ -79,6 +79,13 @@ def _load_unified_yaml() -> Dict[str, Any]:
     return _load_yaml(path)
 
 
+def _expand_path(value: Any) -> Any:
+    """展开 ~ 与环境变量。非字符串原样返回。"""
+    if not isinstance(value, str) or not value.strip():
+        return value
+    return os.path.expanduser(os.path.expandvars(value.strip()))
+
+
 def _set_env_if_present(key: str, value: Any) -> None:
     if value is None:
         return
@@ -95,6 +102,13 @@ def _load_unified_env() -> None:
     integrations = cfg.get("integrations") or {}
     if isinstance(integrations, dict):
         _set_env_if_present("WECHATSYNC_MCP_TOKEN", integrations.get("wechatsync_mcp_token"))
+
+        # 头条走 CDP 直连,不存 cookie 明文,只需要一个独立的 Chrome profile 目录
+        toutiao = integrations.get("toutiao") or {}
+        if isinstance(toutiao, dict):
+            _set_env_if_present("TOUTIAO_PROFILE_DIR", _expand_path(toutiao.get("profile_dir")))
+            _set_env_if_present("TOUTIAO_CHROME_PATH", _expand_path(toutiao.get("chrome_path")))
+            _set_env_if_present("TOUTIAO_LOGIN_TIMEOUT_MS", toutiao.get("login_timeout_ms"))
 
     image = cfg.get("image_generation") or {}
     if not isinstance(image, dict):

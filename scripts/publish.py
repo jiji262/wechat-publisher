@@ -37,8 +37,67 @@ from wechat_api import (
     resolve_image_style,
     list_image_styles,
 )
-from html_converter import convert_markdown_to_wechat_html, load_styles, load_theme
+from html_converter import (
+    convert_markdown_to_wechat_html,
+    load_styles,
+    load_theme,
+    strip_front_matter as _strip_front_matter,
+)
 from image_handler import process_article_images, extract_images_from_markdown
+
+
+# ============================================================
+# AI 味门禁
+# ============================================================
+
+def run_ai_score_gate(md_content, threshold=None, mode="news"):
+    """AI 味检测门禁:未通过直接 SystemExit(1)。
+
+    微信和头条两条发布链路共用 —— 抽出来是为了避免两边各写一份报告打印,
+    以及避免两边的阈值默认值漂移。
+
+    Args:
+        md_content: Markdown 原文
+        threshold: 失败阈值。None 时用 ai_score.DEFAULT_THRESHOLD
+        mode: "news"(长文)或 "newspic"(贴图短文本)
+    """
+    # 延迟导入,避免其他 agent 正在写 ai_score.py 时触发 import 错误
+    try:
+        from ai_score import check_ai_score, DEFAULT_THRESHOLD as _DEFAULT_THRESHOLD
+    except ImportError as exc:
+        print(f"\n[警告] 无法加载 ai_score 模块({exc}),跳过 AI 味检测。")
+        return
+
+    # 使用 ai_score.DEFAULT_THRESHOLD 作为默认值，保证 CLI 与库行为一致
+    _threshold = threshold if threshold is not None else _DEFAULT_THRESHOLD
+    print("\n[预检] AI 味检测...")
+    passed, report = check_ai_score(md_content, _threshold, mode=mode)
+    total = report.get("total_score")
+    print(f"  总分: {total} / 100  (阈值 {_threshold})")
+    if passed:
+        print("  结果: 通过")
+        return
+
+    print(f"  结果: 未通过 AI 味检测(总分 {total} >= 阈值 {_threshold})")
+    dims = report.get("dimensions", {}) or {}
+    if dims:
+        print("  失分维度:")
+        for name, info in dims.items():
+            score = info.get("score") if isinstance(info, dict) else info
+            print(f"    · {name}: {score}")
+    hit_phrases = report.get("hit_phrases") or []
+    if hit_phrases:
+        print("  命中 AI 套话:")
+        for s in hit_phrases[:10]:
+            print(f"    · {s}")
+    hit_vocab = report.get("hit_vocab") or []
+    if hit_vocab:
+        print("  命中 AI 高频词: " + ", ".join(str(v) for v in hit_vocab[:15]))
+    print(
+        "\n  发布已阻止。请回到 SKILL.md 阶段 3.5『人味化改写』按清单逐条打磨,\n"
+        "  或使用 --skip-ai-score 跳过此检测(不推荐)。"
+    )
+    raise SystemExit(1)
 
 
 # ============================================================
@@ -74,16 +133,6 @@ def _strip_inline_markers(text: str) -> str:
     # 反引号
     text = text.replace("`", "")
     return text
-
-
-def _strip_front_matter(md_content: str) -> str:
-    """如果文章以 YAML front matter(--- ... ---)开头,去掉整段 front matter。"""
-    if md_content.lstrip().startswith("---"):
-        # 找到起始 `---` 后的第二个 `---` 行
-        m = re.match(r"^\s*---\s*\n(.*?)\n---\s*\n", md_content, flags=re.DOTALL)
-        if m:
-            return md_content[m.end():]
-    return md_content
 
 
 def extract_title_from_markdown(md_content):
@@ -236,40 +285,7 @@ def publish_from_markdown(
 
     # 2. AI 味检测(在图片上传前,失败时避免浪费素材库配额)
     if not skip_ai_score:
-        # 延迟导入,避免其他 agent 正在写 ai_score.py 时触发 import 错误
-        try:
-            from ai_score import check_ai_score, DEFAULT_THRESHOLD as _DEFAULT_THRESHOLD
-        except ImportError as exc:
-            print(f"\n[警告] 无法加载 ai_score 模块({exc}),跳过 AI 味检测。")
-        else:
-            # 使用 ai_score.DEFAULT_THRESHOLD 作为默认值，保证 CLI 与库行为一致
-            _threshold = ai_score_threshold if ai_score_threshold is not None else _DEFAULT_THRESHOLD
-            print("\n[预检] AI 味检测...")
-            passed, report = check_ai_score(md_content, _threshold)
-            total = report.get("total_score")
-            print(f"  总分: {total} / 100  (阈值 {_threshold})")
-            if not passed:
-                print(f"  结果: 未通过 AI 味检测(总分 {total} >= 阈值 {_threshold})")
-                dims = report.get("dimensions", {}) or {}
-                if dims:
-                    print("  失分维度:")
-                    for name, info in dims.items():
-                        score = info.get("score") if isinstance(info, dict) else info
-                        print(f"    · {name}: {score}")
-                hit_phrases = report.get("hit_phrases") or []
-                if hit_phrases:
-                    print("  命中 AI 套话:")
-                    for s in hit_phrases[:10]:
-                        print(f"    · {s}")
-                hit_vocab = report.get("hit_vocab") or []
-                if hit_vocab:
-                    print("  命中 AI 高频词: " + ", ".join(str(v) for v in hit_vocab[:15]))
-                print(
-                    "\n  发布已阻止。请回到 SKILL.md 阶段 3.5『人味化改写』按清单逐条打磨,\n"
-                    "  或使用 --skip-ai-score 跳过此检测(不推荐)。"
-                )
-                raise SystemExit(1)
-            print("  结果: 通过")
+        run_ai_score_gate(md_content, ai_score_threshold)
 
     # 3. 提取标题和摘要
     if not title:
@@ -670,6 +686,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--account", help="指定公众号账号（对应 wechat-publisher.yaml 中的账号名）")
     parser.add_argument(
+        "--platform",
+        default="wechat",
+        help="发布目标平台,逗号分隔: wechat / toutiao(默认 wechat)。"
+             "如 --platform wechat,toutiao 一次发两边;--platform toutiao 只发头条。"
+             "头条走 CDP 直连,首次使用需在弹出的 Chrome 窗口扫码登录",
+    )
+    parser.add_argument(
         "--sync",
         help="可选:发到微信后同步到其他平台,逗号分隔(如 zhihu,juejin,csdn)。"
              "覆盖 --sync-from-config。需先装 @wechatsync/cli 并配置 WECHATSYNC_MCP_TOKEN",
@@ -748,9 +771,53 @@ def _resolve_sync_platforms(args, config_sync_platforms):
     return None
 
 
+SUPPORTED_TARGET_PLATFORMS = ("wechat", "toutiao")
+
+
+def _resolve_target_platforms(args, parser):
+    """解析 --platform。保留顺序并去重,未知平台直接报错。"""
+    raw = [p.strip().lower() for p in (args.platform or "").split(",") if p.strip()]
+    if not raw:
+        parser.error("--platform 不能为空,可选: " + " / ".join(SUPPORTED_TARGET_PLATFORMS))
+    unknown = [p for p in raw if p not in SUPPORTED_TARGET_PLATFORMS]
+    if unknown:
+        parser.error(
+            f"未知平台: {', '.join(unknown)}。可选: {' / '.join(SUPPORTED_TARGET_PLATFORMS)}。"
+            "（--platform 是发布目标;同步到知乎/掘金等请用 --sync）"
+        )
+    platforms = list(dict.fromkeys(raw))
+
+    # --sync 走的是"微信发完再同步"那条链路,没有微信就无处可同步。
+    # 静默忽略会让用户以为同步了,所以显式报错。
+    if args.sync and "wechat" not in platforms:
+        parser.error(
+            "--sync 依赖微信发布链路,但 --platform 里没有 wechat。"
+            "请改成 --platform wechat,toutiao,或去掉 --sync。"
+        )
+    return platforms
+
+
+def _publish_to_toutiao(args, already_gated):
+    """调用头条发布链路。already_gated=True 表示微信侧已经跑过 AI 味门禁,不重复。"""
+    print("\n" + "=" * 60)
+    print("发布到今日头条")
+    print("=" * 60)
+    from toutiao_publish import run as toutiao_run
+    return toutiao_run(
+        md_path=args.input,
+        title=args.title,
+        cover_path=args.cover,
+        temp_dir=args.temp_dir,
+        ai_score_threshold=args.ai_score_threshold,
+        skip_ai_score=args.skip_ai_score or already_gated,
+        allow_missing_images=args.allow_missing_images,
+    )
+
+
 def main():
     parser = _build_parser()
     args = parser.parse_args()
+    platforms = _resolve_target_platforms(args, parser)
 
     # 设置全局账号
     if args.account:
@@ -761,6 +828,13 @@ def main():
 
     # 解析最终要同步的平台列表
     sync_platforms = _resolve_sync_platforms(args, config_sync_platforms)
+
+    # 头条只支持 markdown 图文一条路径
+    if "toutiao" in platforms and (args.brief or args.type == "newspic" or args.html):
+        parser.error(
+            "头条只支持 --input <markdown> 图文模式,"
+            "不支持贴图(newspic)和 --html(那是微信专用排版)。"
+        )
 
     # --brief 存在 或 --type newspic 走贴图分支
     if args.brief or args.type == "newspic":
@@ -794,27 +868,38 @@ def main():
             source_url=args.source_url,
         )
     elif args.input:
-        result = publish_from_markdown(
-            md_path=args.input,
-            title=args.title,
-            author=args.author,
-            digest=args.digest,
-            cover_path=args.cover,
-            source_url=args.source_url,
-            temp_dir=args.temp_dir,
-            style_path=args.style,
-            theme=args.theme,
-            sync_platforms=sync_platforms,
-            ai_score_threshold=args.ai_score_threshold,
-            skip_ai_score=args.skip_ai_score,
-            allow_missing_images=args.allow_missing_images,
-            debug=args.debug,
-        )
+        result = {}
+        if "wechat" in platforms:
+            result = publish_from_markdown(
+                md_path=args.input,
+                title=args.title,
+                author=args.author,
+                digest=args.digest,
+                cover_path=args.cover,
+                source_url=args.source_url,
+                temp_dir=args.temp_dir,
+                style_path=args.style,
+                theme=args.theme,
+                sync_platforms=sync_platforms,
+                ai_score_threshold=args.ai_score_threshold,
+                skip_ai_score=args.skip_ai_score,
+                allow_missing_images=args.allow_missing_images,
+                debug=args.debug,
+            )
+        if "toutiao" in platforms:
+            result["toutiao"] = _publish_to_toutiao(
+                args, already_gated="wechat" in platforms
+            )
     else:
         parser.error("请提供 --input (Markdown) / --html / --brief(贴图)参数")
 
     # 输出JSON结果
     print("\n" + json.dumps(result, ensure_ascii=False, indent=2))
+
+    # 头条失败要反映在退出码上,否则脚本调用方看不出问题
+    toutiao_result = result.get("toutiao") if isinstance(result, dict) else None
+    if toutiao_result and not toutiao_result.get("success"):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

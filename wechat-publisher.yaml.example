@@ -55,3 +55,10 @@ image_generation:
 integrations:
   # 多平台同步: @wechatsync/cli + Chrome 扩展 MCP token
   wechatsync_mcp_token: ""
+
+  # 今日头条(--platform toutiao)。走 CDP 直连,不存 cookie 明文,
+  # 登录态保存在下面这个独立的 Chrome profile 里,首次使用需扫码一次。
+  toutiao:
+    profile_dir: "~/Library/Application Support/wechat-publisher/toutiao-profile"
+    # chrome_path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    # login_timeout_ms: 180000

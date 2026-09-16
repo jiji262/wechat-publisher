@@ -90,6 +90,10 @@ python3 scripts/html_converter.py article.md --theme refined-blue -o article.htm
 
 # 单独跑 AI 味检测
 python3 scripts/ai_score.py article.md --threshold 45
+
+# 发布到今日头条(首次需扫码一次,之后无人值守)
+python3 scripts/publish.py --input article.md --platform toutiao
+python3 scripts/publish.py --input article.md --platform wechat,toutiao
 ```
 
 `publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做图片处理 → HTML 转换 → AI 味 gate(默认阈值 45)→ 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。

@@ -336,6 +336,56 @@ def extract_images_from_html(html_content):
 # 完整图片处理流程
 # ============================================================
 
+def resolve_images_to_local(md_content, temp_dir, base_dir=None, verbose=True):
+    """把 Markdown 里引用的图片统一解析成本地文件路径(远程图先下载)。
+
+    微信和头条两条发布链路都要先做这一步 —— 微信接着传 media/uploadimg,
+    头条接着传 /spice/image。抽出来是为了避免两边各写一遍下载与相对路径解析。
+
+    Args:
+        md_content: Markdown 正文
+        temp_dir: 远程图下载落地的目录
+        base_dir: 解析相对路径的基准目录(通常是 article.md 所在目录)
+        verbose: 是否打印进度
+
+    Returns:
+        list[(原始url, 本地路径 or None)]，顺序与文中出现顺序一致。
+        解析失败的条目 local_path 为 None,由调用方决定是中止还是跳过。
+    """
+    images = extract_images_from_markdown(md_content)
+    if not images:
+        return []
+
+    if verbose:
+        print(f"发现 {len(images)} 张图片，开始处理...")
+
+    temp_dir = Path(temp_dir)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    resolved = []
+    for i, img in enumerate(images):
+        url = img["url"]
+        alt = img["alt"]
+        if verbose:
+            print(f"[{i+1}/{len(images)}] 处理图片：{alt or url[:50]}")
+
+        local_path = None
+        if url.startswith(("http://", "https://")):
+            local_path = download_image(url, temp_dir, filename=f"article_{i}.jpg")
+        else:
+            p = Path(url)
+            if not p.is_absolute() and base_dir is not None and not p.exists():
+                p = Path(base_dir) / p
+            if p.exists():
+                local_path = str(p)
+            elif verbose:
+                print(f"  跳过无效路径：{url}")
+
+        resolved.append((url, local_path))
+
+    return resolved
+
+
 def process_article_images(md_content, temp_dir=None, base_dir=None):
     """
     完整的文章图片处理流程：
@@ -363,36 +413,14 @@ def process_article_images(md_content, temp_dir=None, base_dir=None):
     temp_dir = Path(temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
-    images = extract_images_from_markdown(md_content)
-    if not images:
-        print("文章中没有找到图片引用")
-        return md_content, {}, None
-
-    print(f"发现 {len(images)} 张图片，开始处理...")
-
     # ------------------------------------------------------------
     # 阶段 1: 逐张解析为本地路径(download/已本地)
-    # ------------------------------------------------------------
     # resolved[i] = (url, local_path or None)
-    resolved = []
-    for i, img in enumerate(images):
-        url = img["url"]
-        alt = img["alt"]
-        print(f"[{i+1}/{len(images)}] 处理图片：{alt or url[:50]}")
-
-        local_path = None
-        if url.startswith(("http://", "https://")):
-            local_path = download_image(url, temp_dir, filename=f"article_{i}.jpg")
-        else:
-            p = Path(url)
-            if not p.is_absolute() and base_dir is not None and not p.exists():
-                p = Path(base_dir) / p
-            if p.exists():
-                local_path = str(p)
-            else:
-                print(f"  跳过无效路径：{url}")
-
-        resolved.append((url, local_path))
+    # ------------------------------------------------------------
+    resolved = resolve_images_to_local(md_content, temp_dir, base_dir=base_dir)
+    if not resolved:
+        print("文章中没有找到图片引用")
+        return md_content, {}, None
 
     # first_image_path 用第一个成功解析到本地的图片(保持原顺序)
     first_image_path = next((lp for _, lp in resolved if lp), None)

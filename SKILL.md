@@ -509,6 +509,46 @@ python3 scripts/publish.py --account tech --html article.html --cover cover.jpg 
 
 ---
 
+### 发布到今日头条(`--platform toutiao`)
+
+**和阶段七的多平台同步不是一回事** —— 头条是本 skill 原生实现的一等发布目标,
+可以脱离微信单独发,不依赖任何浏览器扩展。
+
+```bash
+# 只发头条
+python3 scripts/publish.py --input article.md --platform toutiao
+
+# 一次发两边(微信 + 头条)
+python3 scripts/publish.py --input article.md --platform wechat,toutiao --cover cover.jpg
+
+# 独立入口(等价,参数更少)
+python3 scripts/toutiao_publish.py --input article.md
+python3 scripts/toutiao_publish.py --check        # 只检查登录态
+```
+
+**首次使用需要扫码一次**:会弹出一个独立 profile 的 Chrome 窗口,扫码后登录态长期保存在
+`integrations.toutiao.profile_dir`,之后可无人值守。
+
+工作方式:启一个带独立 profile 的 Chrome,用 CDP 在页面上下文里调头条的内部接口。
+之所以必须过浏览器,是因为头条的发布接口强制 `msToken`/`a_bogus` 签名,由页面内的
+风控 SDK 劫持 `window.fetch` 现算 —— 实测未签名请求返回 `7050 保存失败`。
+CDP 的 `Runtime.evaluate` 默认就在 MAIN world,因此能白嫖签名,不需要浏览器扩展。
+
+几条必须知道的平台约束:
+
+- **头条会丢弃所有内联样式**,只保留结构标签。所以头条走 `toutiao_render.py` 单独渲染,
+  不复用微信那套主题排版 —— 微信的渐变高亮、自定义列表圆点在头条一律失效
+- **`<a>` 会被吃掉**,正文链接一律降级成纯文本
+- **`##` 和 `###` 都会被头条归一成同一级标题**,层级差别在头条不体现
+- **图片必须先传到头条 CDN**,正文里出现外链图片会被拒(`7115 图片uri非法`);
+  本 skill 已自动处理,每张图会在头条侧再传一遍
+- **标题限 2~30 字**,超长直接报错中止,不静默截断
+- 只进草稿箱(`save=0`),不直接发布;不支持贴图(newspic)和 `--html` 模式
+
+接口细节、调研过程与踩过的坑,详见 [references/toutiao-publish-research.md](references/toutiao-publish-research.md)。
+
+---
+
 ## 贴图模式(newspic / 图片消息,与文章模式并列)
 
 和上面 7 阶段的"图文"(news)流程**并列**的第二种发布形态。对标微信公众号的"图片消息":5-10 张图的**卡片墙** + 一段 100-300 字的**短描述**,适合拆卡式讲解 / 金句观点串 / 图片清单等"文字偏少、靠图主导"的内容。
@@ -585,6 +625,10 @@ mp-articles/<main|tech>/<YYYY-MM-DD>-<slug>/
 | `image_handler.py` | 图片下载 / 上传 / 替换 |
 | `ai_score.py` | **反 AI 检测自检**,支持 `--mode news\|newspic` 两种检测策略 |
 | `multi_publish.py` | **多平台同步**(阶段七,基于 @wechatsync/cli,默认不启用) |
+| `toutiao_publish.py` | **发布到今日头条**(`--platform toutiao`),入口 + CLI |
+| `toutiao_render.py` | Markdown → 头条裸 HTML(无内联样式,头条会全部清洗) |
+| `toutiao_cdp.ts` | (内部)头条浏览器侧命令:upload / publish / check |
+| `toutiao_cdp_client.ts` | (内部)CDP 传输层:WebSocket + Chrome 启动 + 登录态 |
 
 老代码中的 `from wechat_api import ...` 保持可用 —— `wechat_api.py` 现在只是 facade,把 `config.py` / `wechat_token.py` / `api.py` 的公共 API 重新导出。CLI `python3 scripts/wechat_api.py ...` 也继续工作。
 
