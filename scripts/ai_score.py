@@ -2,27 +2,21 @@
 """
 AI 味检测器(反 AI 检测自检工具)
 
-对一篇 Markdown 文章做启发式扫描,从以下维度给出"AI 味"评分(0-100),
-越高越像 AI 生成,越低越像真人写作。
+对一篇 Markdown 文章做启发式扫描,总分 0-100,越高越接近已知 AI 模式。
+低分只说明没撞上已知模式,不等于"像真人";advisory 命中项仍需逐条处理。
 
-维度(与权重):
-  1. burstiness(句长方差)   30%  —— 真人句长抖动大,AI 平滑
-  2. phrase_hits(AI 套话)   30%  —— 命中 AI 高频句式 / 套话的次数
-  3. vocab_hits(AI 词汇)    20%  —— 命中 AI 高频名词的次数
-  4. structural_perfection  10%  —— 首先/其次/最后 等教科书结构
-  5. punctuation_flatness   10%  —— 标点单调(几乎只有句号逗号)
+计分维度(news 权重,provisional):burstiness 句长方差 10% / phrases 套话 35% / vocab 高频词 25% /
+structural 教科书枚举 5% / punctuation 标点单调 10% / style 富文本装饰 15%;
+另加 artifacts 确定性伪影罚分(news ×0.20,newspic ×0.30)。同形字是硬门;零宽/双向控制字符先剥离再打分,另计 artifacts。
+句式层的 Claude 腔(否定对照、设问自答、金句收尾…)只出 advisory,不进总分、不改退出码(DR-3)。
 
 用法:
-    python3 ai_score.py article.md
-    python3 ai_score.py article.md --json         # 输出 JSON
-    python3 ai_score.py article.md --threshold 40 # 阈值,高于阈值 exit 1
+    python3 ai_score.py article.md [--json] [--threshold 40] [--mode news|newspic]
+    python3 ai_score.py article.md --advisory --brief brief.md --account main
+    python3 ai_score.py article.md --log-template --save-lint    # 同目录生成 humanize_log.md / ai_lint.json
+    python3 ai_score.py brief.md --newspic-brief                  # 贴图 brief:短文本打分,要点+短文本跑 lint
 
-返回:
-    exit 0 通过(分数 < 阈值)
-    exit 1 失败(分数 >= 阈值,建议重写)
-
-注意:这只是启发式检测,不替代真实的第三方检测器(GPTZero / 朱雀 /
-腾讯 AI 检测),但可以作为发布前的快速 gate 拦住最明显的 AI 味。
+返回:exit 0 通过(分数 < 阈值且无硬门);exit 1 失败。
 """
 
 import re
@@ -32,67 +26,46 @@ import argparse
 import statistics
 from pathlib import Path
 
+import humanize_log
+import zh_chars
+import zh_finders
+import zh_tells
+import zh_text as T
+
 # 默认失败阈值：总分 >= 该值视为"AI 味过重"。
 # check_ai_score()、CLI --threshold 默认值和 publish.py 均应引用此常量，保持一致。
 DEFAULT_THRESHOLD: float = 45.0
+WARN_BAND: float = 10.0          # 阈值以下 WARN_BAND 分以内记为 WARN
 
 
 # ---------- 共享词表(单一真源) ----------
-# AI 高频词的真源在仓库根 humanizer/lexicon.json,由 humanizer/sync.mjs 生成 vendored
-# 副本 _humanizer_lexicon.json 到本目录。读不到副本时(如 skill 独立安装、无仓库根)
-# 回退到下方内置兜底列表,保证仍可用。
-_LEXICON_PATH = Path(__file__).with_name("_humanizer_lexicon.json")
-
-
-def _lexicon_category(name: str, fallback: list) -> list:
-    """从 vendored 词表读某个分类;读不到或为空则用兜底。"""
-    try:
-        data = json.loads(_LEXICON_PATH.read_text(encoding="utf-8"))
-        terms = data.get("categories", {}).get(name)
-        if isinstance(terms, list) and terms:
-            return terms
-    except (OSError, ValueError):
-        pass
-    return fallback
+# 真源在仓库根 humanizer/lexicon.json,由 humanizer/sync.mjs 生成 vendored 副本 _humanizer_lexicon.json;
+# 读不到副本时回退到内置兜底列表。只读,不修改。
+_lexicon_category = T.lexicon
 
 
 # ---------- 黑名单 ----------
 
-# AI 高频套话句式(正则)
-AI_PHRASES = [
-    r"首先[,，].{0,8}其次[,，].{0,10}最后",
-    r"首先[,，].{0,8}其次[,，].{0,10}再次",
-    r"不仅.{0,10}而且",
-    r"一方面.{0,15}另一方面",
-    r"值得一提的是",
-    r"不可否认",
-    r"毋庸置疑",
-    r"综上所述",
-    r"总而言之",
-    r"总的来说",
-    r"由此可见",
-    r"众所周知",
-    r"不难发现",
-    r"显而易见",
-    r"在.{1,15}的背景下",
-    r"随着.{1,20}的发展",
-    r"随着.{1,20}的不断",
-    r"让我们一起来",
-    r"让我们共同",
-    r"归根结底",
-    r"无论如何",
-    r"从某种意义上(说|讲)",
-    r"在当今社会",
-    r"进入新时代",
-    r"在.{1,10}时代",
-    r"站在.{1,10}的角度",
-    r"为.{1,10}提供了.{1,10}可能",
-    r"打开了.{1,10}的大门",
-    r"开启了.{1,10}的篇章",
-    r"翻开了.{1,10}新的一页",
-    r"具有(重要|深远|里程碑)的意义",
+# 句式正则(18 条;『让我们一起来/让我们共同/从某种意义上』不在 zh-set-phrase 里,必须保留)
+AI_PHRASE_REGEX = [
+    r"首先[,，].{0,8}其次[,，].{0,10}最后", r"首先[,，].{0,8}其次[,，].{0,10}再次", r"不仅.{0,10}而且",
+    r"一方面.{0,15}另一方面", r"在.{1,15}的背景下", r"随着.{1,20}的发展", r"随着.{1,20}的不断", r"让我们一起来",
+    r"让我们共同", r"从某种意义上(说|讲)", r"在.{1,10}时代", r"站在.{1,10}的角度", r"为.{1,10}提供了.{1,10}可能",
+    r"打开了.{1,10}的大门", r"开启了.{1,10}的篇章", r"翻开了.{1,10}新的一页", r"具有(重要|深远|里程碑)的意义",
     r"产生了(深远|重大|巨大)的影响",
 ]
+# 字面套话:真源 zh-set-phrase;兜底恰好是原硬编码的 14 个。<4 字的词条忽略,防止短词误报暴增。
+_SET_PHRASE_FALLBACK = [
+    "众所周知", "不可否认", "毋庸置疑", "综上所述", "总而言之", "总的来说", "由此可见",
+    "不难发现", "显而易见", "值得一提的是", "归根结底", "无论如何", "在当今社会", "进入新时代",
+]
+MIN_SET_PHRASE_LEN = 4
+SET_PHRASES = [t for t in _lexicon_category("zh-set-phrase", _SET_PHRASE_FALLBACK)
+               if isinstance(t, str) and len(t) >= MIN_SET_PHRASE_LEN]
+AI_PHRASES = AI_PHRASE_REGEX + [re.escape(t) for t in SET_PHRASES]
+# 真人文本里常作句首话语标记的弱信号,引擎内降权(DR-2:处置留在各引擎,不改共享词表)
+WEAK_SET_PHRASES = frozenset({"无论如何", "总的来说"})
+PHRASE_HIT_PENALTY, PHRASE_WEAK_PENALTY = 15, 5
 
 # AI 高频名词 / 形容词(整篇密集出现即扣分)。
 # 真源见 humanizer/lexicon.json 的 zh-commercial 分类;下方是独立安装时的兜底。
@@ -108,40 +81,21 @@ AI_VOCAB = _lexicon_category("zh-commercial", _AI_VOCAB_FALLBACK)
 
 
 def _strip_markdown(md_text: str) -> str:
-    """去掉 markdown 语法,只保留正文文字,用于句子级分析。"""
-    text = md_text
-    # 代码块
-    text = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
-    # 行内代码
-    text = re.sub(r"`[^`]+`", " ", text)
-    # 图片 / 链接
-    text = re.sub(r"!\[[^\]]*\]\([^)]+\)", " ", text)
-    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-    # 自定义行内标记(保留文字内容)
-    text = re.sub(r"==([^=\n]+)==", r"\1", text)
-    text = re.sub(r"\+\+([^+\n]+)\+\+", r"\1", text)
-    text = re.sub(r"%%([^%\n]+)%%", r"\1", text)
-    text = re.sub(r"&&([^&\n]+)&&", r"\1", text)
-    text = re.sub(r"!!([^!\n]+)!!", r"\1", text)
-    text = re.sub(r"@@([^@\n]+)@@", r"\1", text)
-    text = re.sub(r"\^\^([^\^\n]+)\^\^", r"\1", text)
-    # 加粗 / 斜体
-    text = re.sub(r"\*\*([^*\n]+)\*\*", r"\1", text)
-    text = re.sub(r"\*([^*\n]+)\*", r"\1", text)
-    # 标题符号 / 引用符号 / 列表符号
-    text = re.sub(r"^\s*#{1,6}\s*", "", text, flags=re.MULTILINE)
-    text = re.sub(r"^\s*>\s*", "", text, flags=re.MULTILINE)
-    text = re.sub(r"^\s*[-*+]\s+", "", text, flags=re.MULTILINE)
-    text = re.sub(r"^\s*\d+\.\s+", "", text, flags=re.MULTILINE)
-    # 表格
-    text = re.sub(r"^\|.*\|$", " ", text, flags=re.MULTILINE)
-    return text.strip()
+    """去掉 front matter/代码/表格/图片/URL 与标记,只留正文文字。标题文字保留(套话常在标题里)。"""
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", T.mask_markdown(md_text))
+    # 行首空白只用 [ \t]:mask 后的代码/表格是大段空白,\s 跨行会退化成平方复杂度
+    text = re.sub(r"(?m)^[ \t]*(?:#{1,6}[ \t]*|>[ \t]*|[-*+][ \t]+|\d+\.[ \t]+)", "", T.strip_markers(text))
+    return re.sub(r"[ \t　]+", " ", text).strip()
 
 
-def _split_sentences(text: str) -> list:
-    """按中文/英文标点切句。"""
-    parts = re.split(r"(?<=[。!?!?;;])", text)
-    return [p.strip() for p in parts if p.strip()]
+_split_sentences = T.split_sentences
+
+
+def _burst_sentences(md_text: str) -> list:
+    """burstiness 输入:只取正文段与摘要,保留 ≥4 字且含汉字的句子(列表/标题/表格不算)。"""
+    sents = (re.sub(r"\s+", " ", s) for u in T.text_units(md_text) if u["kind"] in ("para", "digest")
+             for s in T.split_sentences(u["text"]))
+    return [s for s in sents if len(s) >= 4 and T.han_count(s)]
 
 
 # ---------- 各维度打分 ----------
@@ -167,6 +121,7 @@ def score_burstiness(sentences: list) -> tuple:
         ai = 90 - (cv - 0.3) * (80 / 0.5)
     return round(ai, 1), {
         "sentence_count": len(sentences),
+        "cv_sentence_count": len(sentences),
         "mean_length": round(mean, 1),
         "stdev": round(stdev, 1),
         "cv": round(cv, 3),
@@ -174,13 +129,14 @@ def score_burstiness(sentences: list) -> tuple:
 
 
 def score_phrases(text: str) -> tuple:
-    """AI 套话命中率(按 span 去重,避免同一段文本被多个重叠模式重复计数)。"""
+    """AI 套话命中率(按 span 去重;有归属的直接引语里的命中不计;弱信号词降权)。"""
+    quoted = [(s, e) for s, e, attr in T.quote_spans(text) if attr]
     seen_spans = {}  # (start, end) -> matched text
     for pat in AI_PHRASES:
         for m in re.finditer(pat, text):
             span = (m.start(), m.end())
             # 只保留首次命中(不同 pattern 命中同一 span 算一次)
-            if span not in seen_spans:
+            if span not in seen_spans and not any(s <= span[0] and span[1] <= e for s, e in quoted):
                 seen_spans[span] = m.group(0)
     # 再做一轮重叠消除:若 span A 完全被 span B 包含,则丢弃 A
     spans = sorted(seen_spans.keys(), key=lambda s: (s[0], -s[1]))
@@ -193,8 +149,7 @@ def score_phrases(text: str) -> tuple:
         if not contained:
             kept.append(span)
     hits = [seen_spans[s] for s in kept]
-    # 每命中一次扣 15 分(从 0 起累加,上限 100)
-    ai = min(100, len(hits) * 15)
+    ai = min(100, sum(PHRASE_WEAK_PENALTY if h in WEAK_SET_PHRASES else PHRASE_HIT_PENALTY for h in hits))
     return round(float(ai), 1), {"hit_count": len(hits), "samples": hits[:8]}
 
 
@@ -222,30 +177,40 @@ def score_vocab(text: str) -> tuple:
     }
 
 
+def _enum_item(n: str) -> str:
+    # 第X 必须紧跟标点(排除 第一次/第一个);X是 不强制标点(排除 一是一,二是二)
+    return r"^[ \t　]*(?:第" + n + r"[，,、：:]|" + n + r"是(?![一二三四五六七八九十]))"
+
+
+_ENUM_GAP = r"[^\n]*\n(?:[^\n]*\n){0,12}?"   # 不用 (?s).*:会指数级回溯
+STRUCT_PATTERNS = [
+    re.compile("(?m)" + _enum_item("一") + _ENUM_GAP + _enum_item("二") + _ENUM_GAP + _enum_item("三")),
+    re.compile(r"第一[,，、].{0,80}第二[,，、].{0,80}第三"),
+    re.compile(r"(?<![统唯单同专万])一是(?![一二三四五六七八九十])[^。\n]{0,60}二是[^。\n]{0,60}三是"),
+]
+STRUCT_HIT_POINTS = 35
+
+
 def score_structural_perfection(text: str) -> tuple:
-    """检测教科书式枚举结构。"""
-    bad = [
-        r"第一[,，、].{0,80}第二[,，、].{0,80}第三",
-        r"一[是、][^。]{0,60}二[是、][^。]{0,60}三[是、]",
-    ]
-    hits = 0
-    for pat in bad:
-        hits += len(re.findall(pat, text))
-    ai = min(100, hits * 35)
-    return round(float(ai), 1), {"hit_count": hits}
+    """教科书式枚举(含跨段的 第一,/第二,/第三, 与 一是/二是/三是),重叠 span 合并计 1 次。"""
+    hits, end = 0, -1
+    for s, e in sorted(m.span() for p in STRUCT_PATTERNS for m in p.finditer(text)):
+        hits += s >= end
+        end = max(end, e)
+    return round(float(min(100, hits * STRUCT_HIT_POINTS)), 1), {"hit_count": hits}
 
 
-def score_punctuation_flatness(text: str) -> tuple:
-    """检测标点单调度(真人会用破折号、问号、省略号、感叹号)。"""
+def score_punctuation_flatness(text: str, discount: float = 0) -> tuple:
+    """标点单调度(破折号贡献封顶 1/3;discount 扣掉设问自答的问号、冒号揭晓的破折号)。"""
     chars = len(text)
-    flavor = 0
-    flavor += text.count("——") * 3
+    # 每 1000 字期望出现 5 次以上"人味标点";短文本用 200 字做下限避免过度敏感
+    expected = max(chars, 200) / 1000 * 5
+    flavor = min(text.count("——") * 3, expected / 3)
     flavor += text.count("…") * 2
     flavor += text.count("?") + text.count("？")
     flavor += (text.count("!") + text.count("！")) // 2  # 感叹号加分但上限低
     flavor += text.count("(") + text.count("（") + text.count(")") + text.count("）")
-    # 每 1000 字期望出现 5 次以上"人味标点";短文本用 200 字做下限避免过度敏感
-    expected = max(chars, 200) / 1000 * 5
+    flavor = max(0, flavor - discount)
     ratio = flavor / expected if expected else 0
     if ratio >= 1:
         ai = 10
@@ -256,7 +221,7 @@ def score_punctuation_flatness(text: str) -> tuple:
     else:
         ai = 85
     return round(float(ai), 1), {
-        "flavor_points": flavor,
+        "flavor_points": round(flavor, 1),
         "expected": round(expected, 1),
         "ratio": round(ratio, 2),
     }
@@ -265,70 +230,47 @@ def score_punctuation_flatness(text: str) -> tuple:
 _EMOJI_RE = re.compile(
     r"[\U0001F000-\U0001FAFF\U00002600-\U000027BF\U00002190-\U000021FF\U00002B00-\U00002BFF]"
 )
+_SEP_LINE_RE = re.compile(r"(?m)^[ \t]*([*=+%&!@^_-])([ \t]*\1){2,}[ \t]*$")
+MARK_FREE_DENSITY, MARK_RAMP_END, MARK_RAMP_MAX, MARK_TAIL_MAX = 3.0, 10.0, 60.0, 20.0
+FULL_HL_FREE_PER_K, FULL_HL_POINTS, FULL_HL_MAX = 3.0, 8.0, 20.0
 
 
 def score_style(md_text: str) -> tuple:
-    """富文本 Style 层 AI 味(humanizer-zh P14/P15/P17)。
-
-    在**原始 markdown**(strip 之前)上算,补 _strip_markdown 丢弃的维度:
-      - P14 行内加粗滥用   **词** 通篇高亮
-      - P15 列表内联标题   项目符号后紧跟加粗(**术语:** 解释)
-      - P17 emoji 装饰     emoji 当分隔/小标题
-    公众号是富文本重灾区,这些恰恰高度相关,不能像正文那样被剥掉。
-    保守打分:需要真的"滥用"才高分,正常一两处加粗不误伤。
-    """
-    lines = [ln for ln in md_text.split("\n") if ln.strip()]
-    n_lines = max(1, len(lines))
-
-    bold = len(re.findall(r"\*\*[^*\n]+\*\*", md_text))
-    # 列表项紧跟加粗 = 内联标题模板(不论冒号在加粗内还是外)
-    inline_headers = len(re.findall(r"(?m)^\s*(?:[-*+]|\d+\.)\s+\*\*", md_text))
+    """富文本装饰(DC-04):8 种行内标记按千字密度(** 按半处)、整句高亮密度、标题内标记、内联标题、emoji。"""
+    raw = T.mask_blocks(md_text)
+    lines = [ln for ln in raw.split("\n") if ln.strip()]
+    inline_headers = len(re.findall(r"(?m)^[ \t]*(?:[-*+]|\d+\.)[ \t]+\*\*", raw))
     emoji_bullets = sum(1 for ln in lines if _EMOJI_RE.match(ln.strip()))
-    emoji_total = len(_EMOJI_RE.findall(md_text))
-
-    bold_density = bold / n_lines
-    ai = 0.0
-    ai += min(40.0, bold_density * 80)      # 行内加粗滥用
-    ai += min(30.0, inline_headers * 15)    # 内联标题模板
-    ai += min(20.0, emoji_bullets * 10)     # emoji 当分隔/小标题
-    ai += min(10.0, emoji_total * 3)        # emoji 总量
-    ai = min(100.0, ai)
-    return round(ai, 1), {
-        "bold": bold,
-        "inline_headers": inline_headers,
-        "emoji_bullets": emoji_bullets,
-        "emoji_total": emoji_total,
-        "content_lines": n_lines,
-    }
+    emoji_total = len(_EMOJI_RE.findall(raw))
+    t = _SEP_LINE_RE.sub("", T.mask_markdown(re.sub(r"<!--.*?-->", "", raw, flags=re.S)))
+    t = re.sub(r"!?\[[^\]]*\]\([^)]*\)", "", t)
+    seen, n = [], {"colored": 0, "bold": 0, "full": 0, "heading": 0}
+    for m in (m for rx in T.MARK_RES for m in rx.finditer(t)):
+        if not any(m.start() < e and s < m.end() for s, e in seen):   # 嵌套 **==x==** 算 1 处
+            seen.append(m.span())
+            n["bold" if m.group(0).startswith("**") else "colored"] += 1
+            n["full"] += zh_finders.full_sentence(T.strip_markers(m.group(1)))
+            n["heading"] += bool(re.match(r"#{1,3}\s", t[t.rfind("\n", 0, m.start()) + 1:]))
+    kilo = max(T.han_count(t) + len(re.findall(r"[A-Za-z]+", t)), 1000) / 1000
+    density = (n["colored"] + 0.5 * n["bold"]) / kilo
+    ramp = MARK_RAMP_MAX * (density - MARK_FREE_DENSITY) / (MARK_RAMP_END - MARK_FREE_DENSITY)
+    marker = 0 if density <= MARK_FREE_DENSITY else (ramp if density <= MARK_RAMP_END
+                                                      else MARK_RAMP_MAX + min(MARK_TAIL_MAX, (density - MARK_RAMP_END) * 2))
+    full = min(FULL_HL_MAX, max(0, n["full"] / kilo - FULL_HL_FREE_PER_K) * FULL_HL_POINTS)
+    ai = marker + full + min(10.0, n["heading"] * 5) + min(30.0, inline_headers * 15)
+    ai += min(20.0, emoji_bullets * 10) + min(10.0, emoji_total * 3)
+    return round(min(100.0, ai), 1), {**n, "density_per_1k": round(density, 2), "inline_headers": inline_headers,
+                                      "emoji_bullets": emoji_bullets, "emoji_total": emoji_total}
 
 
 # ---------- 总评 ----------
-
-# 长文(news)用的完整 6 维权重
-# style 从 burstiness(30→25)与 structural(10→5)各匀出 5%;punctuation 保持 10%
-# (破折号/标点多样性正分按 DR-1 保留,不动)。
-WEIGHTS_NEWS = {
-    "burstiness": 0.25,
-    "phrases": 0.30,
-    "vocab": 0.20,
-    "structural": 0.05,
-    "punctuation": 0.10,
-    "style": 0.10,
-}
-
-# 短文(newspic 贴图)用的精简权重
-# - 短文本里 burstiness 和 structural 都不稳定(句子/枚举少),权重归 0
-# - phrases 和 vocab 是 AI 味主要来源
-# - punctuation 保留兜底(整篇只有句号也是 AI 信号)
-# - style 保留:贴图常用 emoji 装饰,是真实 AI 味信号
-WEIGHTS_NEWSPIC = {
-    "burstiness": 0.0,
-    "phrases": 0.45,
-    "vocab": 0.35,
-    "structural": 0.0,
-    "punctuation": 0.10,
-    "style": 0.10,
-}
+# 权重全部 provisional:拿到真人基线(PR-06)前,不许为"让存量稿 FAIL"调权重。
+# burstiness 在本语料上方向相反(AI 稿 CV 反而更大),降到 0.10,份额还给 phrases/vocab/style。
+WEIGHTS_NEWS = {"burstiness": 0.10, "phrases": 0.35, "vocab": 0.25, "structural": 0.05, "punctuation": 0.10, "style": 0.15}
+# 贴图短文本:burstiness/structural 不稳定归 0;style 不提高(真人贴图常用 emoji 打头)
+WEIGHTS_NEWSPIC = {"burstiness": 0.0, "phrases": 0.45, "vocab": 0.35, "structural": 0.0, "punctuation": 0.10, "style": 0.10}
+# artifacts 不进凸组合,按加法罚分计入,避免稀释词表信号。newspic 取 0.30:非词表理论上限 48.5 ≥ 阈值,gate 能失败。
+ARTIFACT_PENALTY = {"news": 0.20, "newspic": 0.30}
 
 # 向后兼容:现有代码从本模块 `from ai_score import WEIGHTS` 的地方仍然能读到长文权重
 WEIGHTS = WEIGHTS_NEWS
@@ -340,106 +282,98 @@ def _weights_for(mode: str) -> dict:
     return WEIGHTS_NEWS
 
 
-def analyze(md_text: str, mode: str = "news") -> dict:
-    """
-    对一段 Markdown(或纯文本)做 AI 味打分。
+HARD_FAIL_VERDICT = "🔴 FAIL (含同形字:形似拉丁的西里尔/希腊字母或康熙部首,硬门)"
 
-    Args:
-        md_text: 原文
-        mode:  "news"(默认,长文 5 维)或 "newspic"(贴图短文本,phrases + vocab + punctuation)
-    """
+
+def _verdict(total: float, threshold: float) -> str:
+    """档位由阈值派生,与退出码一致(total 须是取整后的值)。"""
+    if total >= threshold:
+        return f"🔴 FAIL (≥ 阈值 {threshold:g},发布会被拦截)"
+    if total >= threshold - WARN_BAND:
+        return f"🟡 WARN (距阈值 {threshold:g} 不足 {WARN_BAND:g} 分,建议再改一轮)"
+    return "🟢 PASS (低于阈值;低分不等于没有 AI 味,命中项仍需逐条看)"
+
+
+def analyze(md_text: str, mode: str = "news", threshold: float = DEFAULT_THRESHOLD, *,
+            brief_text=None, account=None, title=None, digest=None) -> dict:
+    """对一段 Markdown 打分;返回各维度、advisory 清单(不计分)与 hard_fail(同形字,正文与外部标题/摘要都查)。"""
+    ctx = {"brief_text": brief_text, "account": account, "title": title, "digest": digest}
+    artifacts = zh_tells.score_artifacts(md_text, title=title, digest=digest)   # 含零宽字符计分,须在剥离前
+    adversarial = [{**a, "where": w} for w, v in (("title", title), ("digest", digest)) if v
+                   for a in zh_tells.find_adversarial_chars(v)] + zh_tells.find_adversarial_chars(md_text)
+    md_text = zh_chars.strip_zero_width(md_text)[0]
     plain = _strip_markdown(md_text)
-    sentences = _split_sentences(plain)
-
-    b_score, b_det = score_burstiness(sentences)
-    p_score, p_det = score_phrases(plain)
-    v_score, v_det = score_vocab(plain)
-    s_score, s_det = score_structural_perfection(plain)
-    pu_score, pu_det = score_punctuation_flatness(plain)
-    # Style 在原始 markdown 上算(strip 之前),否则加粗/emoji/标题已被剥掉。
-    st_score, st_det = score_style(md_text)
-
+    scanned = zh_tells.scan(md_text, **ctx)   # lint 复用这次结果:规则只跑一遍
+    by_id = scanned[0]
+    discount = len(by_id["self_qa"]) + 3 * sum("—" in h.get("match", "") for h in by_id["colon_reveal"])
+    scores = {
+        "burstiness": score_burstiness(_burst_sentences(md_text)), "phrases": score_phrases(plain),
+        "vocab": score_vocab(plain),
+        "structural": score_structural_perfection(_strip_markdown(re.sub(r"(?m)^[ \t]*>.*$", "", md_text))),
+        "punctuation": score_punctuation_flatness(plain, discount),
+        "style": score_style(md_text),   # 在原始 markdown 上算,否则加粗/emoji 已被剥掉
+        "artifacts": artifacts,
+    }
     weights = _weights_for(mode)
-    total = (
-        b_score * weights["burstiness"]
-        + p_score * weights["phrases"]
-        + v_score * weights["vocab"]
-        + s_score * weights["structural"]
-        + pu_score * weights["punctuation"]
-        + st_score * weights["style"]
-    )
-
-    verdict = (
-        "🟢 PASS (真人味)"
-        if total < 35
-        else ("🟡 WARN (有 AI 味,建议改)" if total < 55 else "🔴 FAIL (AI 味太重,必须重写)")
-    )
-
+    penalty = ARTIFACT_PENALTY.get(mode, ARTIFACT_PENALTY["news"])
+    total = round(min(100.0, sum(scores[d][0] * w for d, w in weights.items()) + penalty * scores["artifacts"][0]), 1)
     return {
-        "total_ai_score": round(total, 1),
-        "verdict": verdict,
-        "mode": mode,
-        "char_count": len(plain),
-        "sentence_count": len(sentences),
-        "dimensions": {
-            "burstiness":   {"score": b_score,  "detail": b_det},
-            "phrases":      {"score": p_score,  "detail": p_det},
-            "vocab":        {"score": v_score,  "detail": v_det},
-            "structural":   {"score": s_score,  "detail": s_det},
-            "punctuation":  {"score": pu_score, "detail": pu_det},
-            "style":        {"score": st_score, "detail": st_det},
-        },
-        "weights": weights,
+        "total_ai_score": total, "threshold": float(threshold), "mode": mode,
+        "verdict": HARD_FAIL_VERDICT if adversarial else _verdict(total, threshold),
+        "char_count": len(plain), "sentence_count": len(_split_sentences(plain)),
+        "dimensions": {d: {"score": sc, "detail": det} for d, (sc, det) in scores.items()},
+        "weights": weights, "artifact_penalty": penalty, "advisory": zh_tells.lint(md_text, **ctx, scanned=scanned),
+        "rule_counts": {k: len(v) for k, v in by_id.items()},
+        "hard_fail": "adversarial_chars" if adversarial else None, "adversarial": adversarial,
     }
 
 
-def check_ai_score(
-    md_content: str,
-    threshold: float = DEFAULT_THRESHOLD,
-    mode: str = "news",
-) -> tuple:
+def check_ai_score(md_content: str, threshold: float = DEFAULT_THRESHOLD, mode: str = "news", **ctx) -> tuple:
     """
-    库入口:对 md 内容做 AI 味检测。
+    库入口(publish.py 的 gate)。ctx 透传 brief_text/account/title/digest。
 
-    Args:
-        md_content: Markdown 原文
-        threshold: 失败阈值(total_score >= threshold 视为失败)
-        mode: "news"(长文)或 "newspic"(贴图短文本,只看 phrases/vocab/punctuation)
-
-    Returns:
-        (passed, report)
-          passed: bool,total_score < threshold 时为 True
-          report: dict,包含:
-            - total_score: float  总分 0-100
-            - mode: str
-            - dimensions: dict    各维度原始分(未加权)
-                - burstiness / phrases / vocab / structural / punctuation
-            - hit_phrases: list[str]  命中的 AI 套话样本
-            - hit_vocab:   list[str]  命中的 AI 词汇样本
-            - threshold:   float
+    Returns (passed, report):passed = total_score < threshold 且无 hard_fail;report 含 total_score、mode、
+    verdict、dimensions(各维度原始分,含 artifacts)、hit_phrases、hit_vocab、threshold、advisory、hard_fail。
     """
-    full = analyze(md_content, mode=mode)
+    full = analyze(md_content, mode=mode, threshold=threshold, **ctx)
     dims = full["dimensions"]
-    hit_phrases = list(dims["phrases"]["detail"].get("samples", []))
-    hit_vocab = [w for w, _ in dims["vocab"]["detail"].get("top", [])]
-
     report = {
-        "total_score": full["total_ai_score"],
-        "mode": full.get("mode", mode),
-        "dimensions": {
-            "burstiness":  dims["burstiness"]["score"],
-            "phrases":     dims["phrases"]["score"],
-            "vocab":       dims["vocab"]["score"],
-            "structural":  dims["structural"]["score"],
-            "punctuation": dims["punctuation"]["score"],
-            "style":       dims["style"]["score"],
-        },
-        "hit_phrases": hit_phrases,
-        "hit_vocab":   hit_vocab,
-        "threshold":   float(threshold),
+        "total_score": full["total_ai_score"], "mode": full.get("mode", mode), "verdict": full["verdict"],
+        "dimensions": {name: d["score"] for name, d in dims.items()},
+        "hit_phrases": list(dims["phrases"]["detail"].get("samples", [])),
+        "hit_vocab": [w for w, _ in dims["vocab"]["detail"].get("top", [])],
+        "threshold": float(threshold), "advisory": full["advisory"], "hard_fail": full["hard_fail"],
+        "artifacts": dims["artifacts"]["detail"]["hits"], "adversarial": full["adversarial"],
     }
-    passed = report["total_score"] < threshold
-    return passed, report
+    return _passed(full, threshold), report
+
+
+def _passed(full: dict, threshold: float) -> bool:
+    return full["total_ai_score"] < threshold and not full["hard_fail"]
+
+
+def _print_advisory(items: list, artifacts: list = ()):
+    """人读输出不显示上限数字(D3):density 按规则成组,position 逐条;artifacts 一并列出(3.5a 一条命令看全)。"""
+    print(f"advisory: {len(items)} 条待处理(不计分;改掉,或在 humanize_log.md 写保留理由)")
+    for rid in dict.fromkeys(a["id"] for a in items if a.get("scope") == "density"):
+        group = [a for a in items if a["id"] == rid and a.get("scope") == "density"]
+        print(f"  [{rid}] {group[0]['label']}:全文 {group[0]['count']} 处 → 整体减少这种写法;"
+              f"确需保留就在 log 写一行(原文填 *)")
+        for a in group:
+            print(f"      L{a['line']} {a['excerpt']}")
+    for a in (a for a in items if a.get("scope") != "density"):
+        print(f"  [{a['id']}] L{a['line']} {a['excerpt']}  —— {a['message']}(逐条处理)")
+    if artifacts:
+        print(f"artifacts: {len(artifacts)} 条(计分伪影,直接改,不能保留)")
+        for h in artifacts:
+            print(f"  [{h['id']}] L{h['line']} {h['excerpt']}")
+
+
+def _print_hard_fail(report: dict):
+    """同形字硬门行(位置 + 码位);完整报告和 --advisory 都打印(E4)。"""
+    if report.get("hard_fail"):
+        print(f"硬门: {report['hard_fail']} → " + "; ".join(f"{a.get('where') or 'L' + str(a['line'])} {a['excerpt']}"
+                                                           f"({a['codepoint']})" for a in report["adversarial"]))
 
 
 def _pretty_print(report: dict):
@@ -448,13 +382,13 @@ def _pretty_print(report: dict):
     print("=" * 60)
     mode = report.get("mode", "news")
     print(f"模式: {mode}  (news=长文, newspic=贴图短文)")
-    print(f"总分: {report['total_ai_score']} / 100  (0 = 纯真人, 100 = 纯 AI)")
+    print(f"总分: {report['total_ai_score']} / 100  (越高越接近已知 AI 模式)")
     print(f"字数: {report['char_count']}  句数: {report['sentence_count']}")
     print("-" * 60)
     weights = report.get("weights", WEIGHTS)
     for name, d in report["dimensions"].items():
-        w = weights.get(name, 0)
-        suffix = "  [跳过]" if w == 0 else ""
+        w = report.get("artifact_penalty", 0) if name == "artifacts" else weights.get(name, 0)
+        suffix = "  [跳过]" if w == 0 else ("  [加法罚分]" if name == "artifacts" else "")
         print(f"  [{name:13s}] 分数={d['score']:>5}  权重={int(w*100)}%{suffix}")
         det = d["detail"]
         if name == "phrases" and det.get("hit_count"):
@@ -468,47 +402,117 @@ def _pretty_print(report: dict):
                 print(f"      AI 词密度 {det['density_per_1k']}/千字: {top_str}")
         elif name == "burstiness" and det.get("cv") is not None:
             print(f"      句长均值 {det['mean_length']} 字,CV={det['cv']}")
-        elif name == "punctuation":
-            print(f"      人味标点 {det.get('flavor_points', 0)} 次,期望 {det.get('expected', 0)}")
         elif name == "structural" and det.get("hit_count"):
             print(f"      教科书枚举命中 {det['hit_count']} 次")
-        elif name == "style" and (det.get("bold") or det.get("emoji_total") or det.get("inline_headers")):
-            print(
-                f"      加粗×{det.get('bold', 0)} 内联标题×{det.get('inline_headers', 0)} "
-                f"emoji×{det.get('emoji_total', 0)}(行首 {det.get('emoji_bullets', 0)})"
-            )
+        elif name in ("style", "artifacts") and d["score"]:
+            print(f"      {json.dumps({k: v for k, v in det.items() if k != 'hits'}, ensure_ascii=False)}")
+            for h in det.get("hits", []):
+                print(f"        · [{h['id']}] L{h['line']} {h['excerpt']}")
+    _print_hard_fail(report)
     print("=" * 60)
+    if report.get("advisory"):
+        _print_advisory(report["advisory"])
 
 
-def main():
+def _newspic_parts(brief_md: str) -> tuple:
+    """贴图 brief:返回 (短文本, 标题+要点 lint 结果, front matter 标题)。小节别名与 publish_from_brief 一致;要点按零容忍位置检查。"""
+    from newspic_build import parse_brief, card_points  # 懒加载:newspic_build 顶层依赖 yaml/config
+    parsed = parse_brief(brief_md)
+    sections, title = parsed["sections"], str((parsed["frontmatter"] or {}).get("title") or "")
+    extra = [{**a, "kind": "title", "message": f"标题:{a['message']}"} for a in zh_tells.lint("", title=title)
+             if a["kind"] == "title"] if title.strip() else []
+    extra += [{**a, "kind": "point", "message": f"要点 {i}:{a['message']}"}
+              for i, p in enumerate(card_points(sections), 1) for a in zh_tells.lint("", title=p)]
+    return (sections.get("短文本") or sections.get("短描述") or "").strip(), extra, title
+
+
+def _title_hard_gate(full: dict, title: str):
+    """贴图 brief 的 front matter 标题不进打分,这里单独过同形字硬门(与 publish._newspic_title_gate 同口径)。"""
+    adv = [{**a, "where": "title"} for a in zh_tells.find_adversarial_chars(title)]
+    if adv:
+        full["adversarial"] = adv + full["adversarial"]
+        full["hard_fail"] = "adversarial_chars"
+        full["verdict"] = HARD_FAIL_VERDICT
+
+
+def _write_side_files(args, full: dict):
+    out_dir = Path(args.input).parent
+    if args.save_lint:   # 不写 cap:文章目录里不留"每种写法能用几次"的配额表(E6)
+        lint = {"counts": full["rule_counts"], "advisory": [{k: v for k, v in a.items() if k != "cap"} for a in full["advisory"]],
+                "artifacts": full["dimensions"]["artifacts"]["detail"]["hits"],
+                "hard_fail": full["hard_fail"], "adversarial": full["adversarial"]}
+        (out_dir / "ai_lint.json").write_text(json.dumps(lint, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.log_template:
+        log = out_dir / humanize_log.LOG_NAME
+        old = log.read_text(encoding="utf-8") if log.exists() else None
+        log.write_text(humanize_log.merge_template(full["advisory"], old), encoding="utf-8")
+
+
+LOG_GAP_PRINT_MAX = 30     # --check-log 最多逐条列出的缺口数
+
+
+def _check_log(input_path: str, md: str, full: dict) -> bool:
+    """--check-log:与 publish 门禁同一套 humanize_log 覆盖检查(含出处核对),离线验证 3.5 的退出条件。"""
+    gaps, log_path = humanize_log.check_article(input_path, full["advisory"], md)
+    if not gaps:
+        print(f"humanize_log 覆盖检查:通过({len(full['advisory'])} 条 advisory 均已改掉或有有效的「保留」行)")
+        return True
+    missing = "" if log_path.exists() else ",文件不存在,先用 --log-template 生成"
+    print(f"humanize_log 覆盖检查:未通过({log_path}{missing})")
+    for g in gaps[:LOG_GAP_PRINT_MAX]:
+        excerpt = " ".join(str(g.get("excerpt", "")).split())
+        print(f"  · [{g['id']}] L{g.get('line', '')} {excerpt} —— {g.get('message', '')}")
+    return False
+
+
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="AI 味检测器")
     parser.add_argument("input", help="Markdown 文件路径")
     parser.add_argument("--json", action="store_true", help="输出 JSON")
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=DEFAULT_THRESHOLD,
-        help=f"失败阈值(默认 {DEFAULT_THRESHOLD})。总分 >= 阈值则 exit 1",
-    )
-    parser.add_argument(
-        "--mode",
-        choices=["news", "newspic"],
-        default="news",
-        help="检测模式: news(长文,默认)/ newspic(贴图短文本,只看 phrases+vocab+punctuation)",
-    )
-    args = parser.parse_args()
+    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD,
+                        help=f"失败阈值(默认 {DEFAULT_THRESHOLD})。总分 >= 阈值则 exit 1")
+    parser.add_argument("--mode", choices=["news", "newspic"], default="news",
+                        help="检测模式: news(长文,默认)/ newspic(贴图短文本)")
+    parser.add_argument("--brief", help="brief.md 路径:用其 experiences 核对第一人称亲历与引语出处")
+    parser.add_argument("--account", help="账号 key(如 main / tech):启用该账号的禁用口头禅检查")
+    parser.add_argument("--title", help="标题(零容忍检查否定对照/价值宣告)")
+    parser.add_argument("--digest", help="摘要(零容忍检查否定对照/价值宣告);缺省按 publish 同一口径从正文提取")
+    parser.add_argument("--advisory", action="store_true",
+                        help="只打印 advisory 清单、artifacts 和同形字硬门(退出码按总分和同形字硬门)")
+    parser.add_argument("--log-template", action="store_true", help="在输入文件同目录生成/补全 humanize_log.md 骨架")
+    parser.add_argument("--save-lint", action="store_true", help="在输入文件同目录写 ai_lint.json")
+    parser.add_argument("--check-log", action="store_true",
+                        help="按 publish 门禁同一口径核对同目录 humanize_log.md;有未覆盖条目则 exit 1")
+    parser.add_argument("--newspic-brief", action="store_true", help="输入是贴图 brief.md:短文本按 newspic 打分,要点+短文本跑 lint")
+    return parser
 
+
+def main():
+    args = _build_parser().parse_args()
     md = Path(args.input).read_text(encoding="utf-8")
-    # 走和库 API 相同的 check_ai_score 路径,保证 CLI/库行为一致。
-    passed, _ = check_ai_score(md, threshold=args.threshold, mode=args.mode)
-    full = analyze(md, mode=args.mode)  # 用于详细打印(库 API 只返回简表)
-
+    ctx = {"brief_text": Path(args.brief).read_text(encoding="utf-8") if args.brief else None,
+           "account": args.account, "title": args.title, "digest": args.digest}
+    extra, fm_title = [], ""
+    if args.newspic_brief:
+        md, extra, fm_title = _newspic_parts(md)
+        args.mode = "newspic"
+    elif args.digest is None:   # E5:默认摘要与 publish 发出去的那份完全一致;排版卡等不发布的稿显式传 --digest ""
+        from article_meta import extract_digest_from_markdown
+        ctx["digest"] = extract_digest_from_markdown(zh_chars.strip_zero_width(md)[0])
+    full = analyze(md, mode=args.mode, threshold=args.threshold, **ctx)
+    full["advisory"] = extra + full["advisory"]
+    if fm_title and not args.title:
+        _title_hard_gate(full, fm_title)
+    _write_side_files(args, full)
     if args.json:
         print(json.dumps(full, ensure_ascii=False, indent=2))
-    else:
+    elif args.advisory:
+        _print_advisory(full["advisory"], full["dimensions"]["artifacts"]["detail"]["hits"])
+        _print_hard_fail(full)
+    elif not args.check_log:
         _pretty_print(full)
-
-    sys.exit(0 if passed else 1)
+    log_ok = _check_log(args.input, md, full) if args.check_log else True
+    sys.exit(0 if _passed(full, args.threshold) and log_ok else 1)
 
 
 if __name__ == "__main__":

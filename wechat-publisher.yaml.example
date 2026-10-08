@@ -13,9 +13,14 @@ accounts:
     theme: "refined-blue"
     image_style: "hand-drawn-blue"
     newspic_image_style: "infographic-warm"
+    # voice 只写取舍原则(写什么、不写什么、怎么判断),不写要插进正文的口头禅或句子。
+    # 这里出现的任何词都只是描述,不是插入指令;冲突时以 SKILL.md「账号与人格」为准。
+    # 冷读审校(SKILL.md 3.5c)不读这个字段,用 SKILL.md 阶段三「写作风格」里的账号原文。
+    # assets/voices/<account>/samples.md 有本人写的样本时,以样本为准。
     voice: |
       飞哥，独立开发者，专注 AI 与效率工具。
-      微信公众号：某某号。
+      热情来自具体判断和读者能用上的东西，不靠感叹和口头禅；
+      类比只用在难懂的地方，喻体贴合读者经验、不重复；口语感来自短动词和自然衔接。
     sync_platforms: [zhihu, juejin, csdn]
 
   tech:
@@ -28,6 +33,7 @@ accounts:
     newspic_image_style: "infographic-blue"
     voice: |
       技术团队，持续输出工程实践。
+      冷静，吐槽对准具体对象；不用感叹号；命令和版本号只在说明问题时出现，不当装饰；结尾形式不固定。
 
 image_generation:
   # 默认 baoyu-image-gen; 如需使用 Web 登录版 Gemini,改为 baoyu-danger-gemini-web

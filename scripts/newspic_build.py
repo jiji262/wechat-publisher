@@ -9,35 +9,35 @@
 按 card_plan.json 的 prompts 批量执行,保存到 `<slug>/images/`。
 
 典型流程:
-    # 1. 人类写 brief.md(话题+要点+短文本)
-    # 2. 拆卡 + 生成 prompts + 短文本
+    # 1. 人类写 brief.md(话题+要点+短文本),格式见仓库根 brief.md.example
+    #    与 references/newspic-mode.md;本文件不内嵌示例,避免示例句被照抄进卡面
+    # 2. 拆卡 + 生成 prompts;每条要点跑 zh_tells.lint,命中写进每张卡的 warnings
     python3 newspic_build.py brief.md
-    # 3. Claude 按 card_plan.json 逐张生图,保存到 images/01.png 起
-    # 4. Claude 跑 AI 味检测(newspic 模式)
-    python3 ai_score.py article.md --mode newspic
+    # 3. 先处理 warnings(卡面文字画进图片后就改不了),再按 card_plan.json 逐张生图,
+    #    保存到 images/01.png 起
+    # 4. AI 味检测:短文本按 newspic 模式打分,要点 + 短文本跑 advisory
+    python3 ai_score.py brief.md --newspic-brief
     # 5. 发布
     python3 publish.py --account main --type newspic --brief brief.md
 
-brief.md 格式示例:
+brief.md 结构(尖括号是占位说明,不是可用的句子):
 
     ---
-    topic: "Claude Code /rewind 命令"
-    image_style: marker-lime    # 可选,不写就用账号默认或 hand-drawn-blue
-    card_count: 6                  # 可选,不写就跟要点数走
-    title: "Claude Code 里,最有用的命令之一"
-    account: main
+    topic: "<贴图主题>"
+    image_style: <风格名>          # 可选,不写就用账号默认或 newspic 兜底风格
+    card_count: <卡片数>           # 可选,不写就跟要点数走
+    title: "<贴图标题>"            # 可选
+    account: <main|tech>          # 可选
     ---
 
     # 要点
 
-    1. /rewind 厉害的地方不是"撤销一下",而是给你一个更对的工作流
-    2. 你可以输入 /rewind,也可以连续按两次 Esc,快速回滚代码
-    3. AI 解决不好问题,常常不是因为它不够会写,而是你不敢让它放手试
-    4. /rewind 的价值,就是把"试错"这件事真正变得可控
+    1. <一卡一个具体信息点>
+    2. <...>
 
     # 短文本
 
-    (可选,不写由 Claude 根据"要点"生成 100-300 字的短描述)
+    <可选,100-300 字;不写由 Claude 根据要点生成>
 
 -------
 
@@ -78,6 +78,10 @@ from config import (
     get_image_style,
     resolve_image_style,
 )
+import zh_tells
+
+# 要点所在小节的候选名(按优先级)
+POINT_SECTIONS = ("要点", "要点列表", "卡片要点")
 
 
 # ============================================================
@@ -138,6 +142,27 @@ def extract_bullet_points(section_text: str) -> List[str]:
         if m:
             points.append(m.group(1).strip())
     return points
+
+
+def card_points(sections: Dict[str, str]) -> List[str]:
+    """取 brief 的要点列表(第一个非空的候选小节)。"""
+    text = next((sections[k] for k in POINT_SECTIONS if sections.get(k)), "")
+    return extract_bullet_points(text)
+
+
+def lint_card_text(text: str) -> List[Dict[str, Any]]:
+    """卡面/贴图标题文字的 advisory。
+
+    按零容忍位置(同标题)检查:卡面文字会被画进图片,生图后改不了。
+    对完整要点(point_full)跑,不对拆开后的 card_main/card_sub 跑,否则逗号两侧的对举会被拆散漏检。
+    """
+    if not text or not text.strip():
+        return []
+    return [
+        {"id": a["id"], "label": a["label"], "excerpt": a["excerpt"],
+         "message": f"{a['label']}:卡面文字画进图片后改不了,生图前先改要点"}
+        for a in zh_tells.lint("", title=text)
+    ]
 
 
 # ============================================================
@@ -230,6 +255,7 @@ def build_card_plan(
           "target_file": str,        # 相对 output_dir 的目标文件名,如 images/01.png
           "aspect":    str,
           "size":      str,
+          "warnings":  list,         # 要点 lint 命中 [{id,label,excerpt,message}],生图前处理
         }
     """
     fm = parsed["frontmatter"] or {}
@@ -248,8 +274,7 @@ def build_card_plan(
     )
 
     # 提取要点
-    points_text = sections.get("要点") or sections.get("要点列表") or sections.get("卡片要点") or ""
-    points = extract_bullet_points(points_text)
+    points = card_points(sections)
     if not points:
         raise ValueError(
             "brief.md 里找不到『# 要点』小节,或要点列表是空的。\n"
@@ -303,6 +328,7 @@ def build_card_plan(
             "target_file": f"images/{i:02d}.png",
             "aspect": aspect,
             "size": size,
+            "warnings": lint_card_text(point),
         })
 
     short_text = sections.get("短文本") or sections.get("短描述") or ""
@@ -325,6 +351,27 @@ def build_card_plan(
 # ============================================================
 # CLI
 # ============================================================
+
+def _print_plan_summary(plan):
+    """控制台人类友好摘要:每张卡的文案、目标文件和卡面 lint 命中(warnings)。"""
+    print(f"话题: {plan['topic']}")
+    print(f"风格: {plan['image_style']} ({plan['image_style_display']})")
+    print(f"卡数: {plan['card_count']}")
+    print(f"标题: {plan['title'] or '(未填,发布时可用 --title 指定)'}")
+    print(f"短文本: {'(已填)' if plan['short_text'] else '(未填,需 Claude 根据要点生成)'}")
+    print("-" * 60)
+    for c in plan["cards"]:
+        print(f"  卡 {c['index']:2d}: {c['card_main']}")
+        if c["card_sub"]:
+            print(f"         └─ {c['card_sub']}")
+        print(f"         → {c['target_file']}  ({c['aspect']} {c['size']})")
+        for w in c["warnings"]:
+            print(f"         ! [{w['id']}] {w['message']}")
+    print("-" * 60)
+    n_warn = sum(len(c["warnings"]) for c in plan["cards"])
+    if n_warn:
+        print(f"[提示] {n_warn} 条卡面 lint 命中(见各卡 warnings),生图前先改要点")
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -357,19 +404,7 @@ def main():
         print(f"[错误] {e}", file=sys.stderr)
         sys.exit(1)
 
-    # 控制台人类友好摘要
-    print(f"话题: {plan['topic']}")
-    print(f"风格: {plan['image_style']} ({plan['image_style_display']})")
-    print(f"卡数: {plan['card_count']}")
-    print(f"标题: {plan['title'] or '(未填,发布时可用 --title 指定)'}")
-    print(f"短文本: {'(已填)' if plan['short_text'] else '(未填,需 Claude 根据要点生成)'}")
-    print("-" * 60)
-    for c in plan["cards"]:
-        print(f"  卡 {c['index']:2d}: {c['card_main']}")
-        if c["card_sub"]:
-            print(f"         └─ {c['card_sub']}")
-        print(f"         → {c['target_file']}  ({c['aspect']} {c['size']})")
-    print("-" * 60)
+    _print_plan_summary(plan)
 
     if args.dry_run:
         print("[dry-run] 不写文件")
@@ -379,10 +414,10 @@ def main():
     out_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"card_plan.json 已写入: {out_path}")
     print("\n下一步:")
-    print("  1. Claude 按 card_plan.json 里每张卡的 prompt 调 scripts/generate_image.py 生图")
+    print("  1. 先处理各卡 warnings,再按 card_plan.json 里每张卡的 prompt 调 scripts/generate_image.py 生图")
     print(f"     目标路径: {brief_path.parent}/images/01.png, 02.png, ...")
     print("  2. 如短文本未填,Claude 根据要点撰写 100-300 字短描述写入 brief.md '# 短文本' 小节")
-    print("  3. python3 ai_score.py <brief.md 里的短文本> --mode newspic --threshold 45")
+    print(f"  3. python3 ai_score.py {brief_path} --newspic-brief")
     print(f"  4. python3 publish.py --account <main|tech> --type newspic --brief {brief_path}")
 
 

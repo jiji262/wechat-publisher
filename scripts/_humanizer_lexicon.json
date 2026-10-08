@@ -194,9 +194,13 @@
       ]
     },
     "wechat": {
-      "_engine": "wechat-publisher/scripts/ai_score.py",
+      "_engine": "wechat-publisher/scripts/ai_score.py + zh_tells.py",
       "uses": [
-        "zh-commercial"
+        "zh-commercial",
+        "zh-set-phrase",
+        "zh-reader-shout",
+        "zh-no-stance",
+        "zh-bait"
       ]
     },
     "novel": {
@@ -206,7 +210,7 @@
       ]
     },
     "tech-book": {
-      "_engine": "tech-book-skill (planned)",
+      "_engine": "tech-book-skill/skills/tech-book/scripts/ai_score.py + ai_lexicon.py (builtin lists; optional vendored override, not a sync target)",
       "uses": [
         "zh-commercial",
         "zh-set-phrase"

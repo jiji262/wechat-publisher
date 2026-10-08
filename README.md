@@ -5,11 +5,12 @@
 ## 功能
 
 - **全网素材搜索**:围绕话题多轮搜索、交叉验证,筛选最新案例与权威观点
-- **AI 写作**:3000–5000 字深度长文,多种结构按题材选择,内置反 AI 味规则
-- **AI 配图**:`scripts/generate_image.py` 为每章生成风格统一的手绘信息图,支持 OpenAI / Gemini 后端
+- **AI 写作**:深度长文(常见 2500–5000 字,材料撑不起就写短),多种结构按题材选择,按跨篇指纹避开重复的结构和开头;目标是读着像账号作者本人写的
+- **AI 配图**:按信息点配图(`scripts/generate_image.py` 手绘信息图,或排版卡),一篇内风格统一,支持 OpenAI / Gemini 后端
 - **微信排版**:Markdown → 微信兼容 HTML,样式全内联,内置 **15 套主题**,粘贴不丢样式
 - **一键发布**:封面、标题、摘要、作者自动填好,直达草稿箱
-- **反 AI 检测 gate**:`ai_score.py` 5 维打分,发布前自动拦截高 AI 味稿件
+- **去 AI 味改稿流程**:初稿快照 → `ai_score.py` 负向模式 lint(带行号的 advisory 清单)→ 定点改稿并写 `humanize_log.md` → 全新上下文冷读 → `fidelity_check.py` 保真核对 + `fingerprint.py` 跨篇比对
+- **AI 味 gate**:`ai_score.py` 6 维加权 + 确定性伪影罚分;发布前拦截超阈值稿件和同形字(零宽字符自动清除),并检查剩余 advisory 都被 `humanize_log.md` 里的保留行覆盖。分数只能说明没踩已知的坑,不能证明像人
 
 ## 安装
 
@@ -76,7 +77,7 @@ python3 scripts/wechat_api.py list-accounts
 使用 /wechat-publisher 写一篇关于"大模型 Agent 最新进展"的公众号文章
 ```
 
-Skill 自动执行 7 阶段:搜索素材 → 选结构 → 撰写 → 人味化改写 → 生成配图 → 排版转换 → AI 味自检 →发布草稿 →(可选)多平台同步。完整流程见 [`SKILL.md`](SKILL.md)。
+Skill 自动执行 7 阶段:搜索素材 → 选结构 → 撰写 → 改稿 pass(lint + 冷读 + 保真核对)→ 生成配图 → 排版转换 → AI 味 gate → 发布草稿 →(可选)多平台同步。完整流程见 [`SKILL.md`](SKILL.md)。
 
 ### 命令行
 
@@ -88,15 +89,16 @@ python3 scripts/publish.py --account main --input article.md \
 # 只转排版:Markdown → 微信 HTML
 python3 scripts/html_converter.py article.md --theme refined-blue -o article.html
 
-# 单独跑 AI 味检测
+# 单独跑 AI 味检测(--advisory 列出带行号的 artifacts 与 advisory 清单)
 python3 scripts/ai_score.py article.md --threshold 45
+python3 scripts/ai_score.py article.md --advisory --brief brief.md --account main
 
 # 发布到今日头条(首次需扫码一次,之后无人值守)
 python3 scripts/publish.py --input article.md --platform toutiao
 python3 scripts/publish.py --input article.md --platform wechat,toutiao
 ```
 
-`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做图片处理 → HTML 转换 → AI 味 gate(默认阈值 45)→ 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
+`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做图片处理 → HTML 转换 → AI 味 gate(默认阈值 45,外加 humanize_log 覆盖检查)→ 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
 
 ## 排版主题
 
@@ -147,7 +149,8 @@ python3 scripts/publish.py --input article.md --platform wechat,toutiao
 | `40001` access_token 无效 | 检查 AppID / AppSecret |
 | `40009` 图片超 10MB | 压缩后重试 |
 | `45166` 内容不合规 | 检查敏感词或特殊 HTML 标签 |
-| `ai_score.py` 返回 FAIL | 按命中清单重写,或 `--skip-ai-score` 临时绕过 |
+| `ai_score.py` 返回 FAIL | 回 SKILL.md 阶段 3.5 按命中清单定点改;`--skip-ai-score` 只用于用户本人写的稿子 |
+| humanize_log 覆盖检查失败 | 对列出的条目改稿,或在 `humanize_log.md` 补保留行(写法见 `references/anti-ai-checklist.md` D 层) |
 
 ## 注意事项
 

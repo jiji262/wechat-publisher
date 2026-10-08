@@ -94,24 +94,31 @@ def check() -> Dict[str, Any]:
 # 主流程
 # ------------------------------------------------------------------
 
-def _load_and_gate(md_path, ai_score_threshold, skip_ai_score) -> tuple:
-    """读文章 + 过 AI 味门禁。返回 (Path, 正文)。"""
+def _load_and_gate(md_path, ai_score_threshold, skip_ai_score, *,
+                   title=None, account=None) -> tuple:
+    """读文章 → 清零宽字符 → 定标题 → 过 AI 味门禁。返回 (Path, 正文, 最终标题)。
+
+    门禁就是 publish.run_ai_score_gate,带文章路径(核对 brief.md / humanize_log.md),
+    标题先定下来再查,保证查的就是要发的那个。单独运行本脚本也走这一道。
+    """
     md_file = Path(md_path)
     if not md_file.exists():
         raise ToutiaoPublishError(f"文章不存在: {md_file}")
+    from publish import run_ai_score_gate, strip_zero_width_chars
     md_content = md_file.read_text(encoding="utf-8")
     print(f"读取文章：{md_file} ({len(md_content)} 字符)")
+    md_content = strip_zero_width_chars(md_content)
+    resolved_title = _resolve_title(md_content, title)
     if not skip_ai_score:
-        from publish import run_ai_score_gate
-        run_ai_score_gate(md_content, ai_score_threshold)
-    return md_file, md_content
+        run_ai_score_gate(md_content, ai_score_threshold, md_path=md_file,
+                          title=resolved_title, account=account)
+    return md_file, md_content, resolved_title
 
 
 def _resolve_title(md_content: str, title: Optional[str]) -> str:
-    if not title:
-        from publish import extract_title_from_markdown
-        title = extract_title_from_markdown(md_content)
-    return validate_title(title or "")
+    """最终标题:手动传入优先,否则按 publish 同一口径提取;都先清零宽字符(E4)再校验长度。"""
+    from publish import extract_title_from_markdown, strip_zero_width_chars
+    return validate_title(strip_zero_width_chars(title or extract_title_from_markdown(md_content)) or "")
 
 
 def _collect_images(content_md: str, temp_dir: str, base_dir: Path,
@@ -162,6 +169,7 @@ def _publish_into(
     ai_score_threshold: Optional[float] = None,
     skip_ai_score: bool = False,
     allow_missing_images: bool = False,
+    account: Optional[str] = None,
 ) -> None:
     """实际干活的部分,把进度写进 result。异常一律交给 run() 翻译。
 
@@ -169,8 +177,8 @@ def _publish_into(
     title / images —— 光一句"失败了"对排查没用。
     """
     load_env()  # 把 wechat-publisher.yaml 的 integrations.toutiao 注入环境变量
-    md_file, md_content = _load_and_gate(md_path, ai_score_threshold, skip_ai_score)
-    resolved_title = _resolve_title(md_content, title)
+    md_file, md_content, resolved_title = _load_and_gate(md_path, ai_score_threshold, skip_ai_score,
+                                                         title=title, account=account)
     result["title"] = resolved_title
     print(f"\n[头条] 标题：{resolved_title}")
 
@@ -193,9 +201,7 @@ def _publish_into(
     result["images"] = len(image_map)
     result["cover"] = bool(cover_info)
 
-    html = render_toutiao_html(
-        content_md, image_map=image_map, skip_missing=allow_missing_images
-    )
+    html = render_toutiao_html(content_md, image_map=image_map, skip_missing=allow_missing_images)
     print(f"  正文 HTML 生成完成 ({len(html)} 字符)")
 
     print("\n[头条 3/3] 写入草稿箱...")
@@ -217,8 +223,11 @@ def run(
     ai_score_threshold: Optional[float] = None,
     skip_ai_score: bool = False,
     allow_missing_images: bool = False,
+    account: Optional[str] = None,
 ) -> Dict[str, Any]:
     """把 markdown 发布到头条草稿箱。
+
+    account 只用于 AI 味门禁的账号禁用口头禅检查(头条本身没有账号概念)。
 
     Returns:
         dict: success / platform / title / pgc_id / draft_url / images / cover / error
@@ -233,7 +242,7 @@ def run(
             result, md_path,
             title=title, cover_path=cover_path, temp_dir=temp_dir,
             ai_score_threshold=ai_score_threshold, skip_ai_score=skip_ai_score,
-            allow_missing_images=allow_missing_images,
+            allow_missing_images=allow_missing_images, account=account,
         )
     except (ToutiaoPublishError, ToutiaoRenderError) as exc:
         result["error"] = str(exc)
