@@ -79,6 +79,23 @@ def test_inline_script_tag_in_code_is_escaped(theme):
     assert "<script>" not in html.replace("&lt;script&gt;", "")
 
 
+def test_inline_code_angle_brackets_escaped_once(theme):
+    """行内代码里的 < > 只转义一次,正文不能显示成字面的 &lt;。"""
+    html = _convert("副本放在 `<项目根目录>/.claude/worktrees/` 里", theme)
+
+    assert "&lt;项目根目录&gt;/.claude/worktrees/" in html
+    assert "&amp;lt;" not in html and "&amp;gt;" not in html
+
+
+def test_inline_code_content_stays_literal(theme):
+    """行内代码里的 & 和 Markdown 标记原样显示,不被二次转义,也不被渲染。"""
+    html = _convert("跑 `a && b` 和 `x*y*z`", theme)
+
+    assert "a &amp;&amp; b" in html
+    assert "&amp;amp;" not in html
+    assert "<em" not in html
+
+
 def test_javascript_url_rejected(theme):
     """
     #5 fix: `[click](javascript:alert(1))` should NOT render as a

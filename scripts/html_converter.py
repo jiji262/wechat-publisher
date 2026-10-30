@@ -198,6 +198,26 @@ INLINE_MARKS = [
     (r'\^\^([^\^\n]+)\^\^', "em_orange"),
 ]
 
+# 行内代码占位符:私有区字符包住序号,正文里不会出现,后面的转义和标记规则也碰不到
+_CODE_SLOT = "\ue000{}\ue001"
+_CODE_SLOT_RE = re.compile(r"\ue000(\d+)\ue001")
+_INLINE_CODE_RE = re.compile(r"`([^`]+)`")
+
+
+def _stash_inline_code(text: str, code_style: str) -> tuple[str, list[str]]:
+    """把行内代码换成占位符,内容在这里只转义一次(连引号),之后用 _restore_inline_code 放回。"""
+    codes: list[str] = []
+
+    def _sub(m):
+        codes.append(f'<code style="{code_style}">{html.escape(m.group(1), quote=True)}</code>')
+        return _CODE_SLOT.format(len(codes) - 1)
+
+    return _INLINE_CODE_RE.sub(_sub, text), codes
+
+
+def _restore_inline_code(text: str, codes: list[str]) -> str:
+    return _CODE_SLOT_RE.sub(lambda m: codes[int(m.group(1))], text)
+
 
 def strip_front_matter(md_content: str) -> str:
     """如果文本以 YAML front matter(--- ... ---)开头,去掉整段 front matter。
@@ -316,6 +336,8 @@ def convert_markdown_to_wechat_html(
         """处理行内 Markdown 语法 + 扩展标记。
 
         安全处理:
+        - 行内代码 `code` 最先换成占位符,内容只转义一次(连引号),
+          下面的转义和标记规则都碰不到它,最后再放回
         - 先转义 <,> 以阻止原始 HTML/JS (<script> 之类)透传
           (& 不在这一步转义,因为自定义标记 &&...&& 会被破坏;
           所有由我们自己生成的 style 属性都不含原始 &,所以无需
@@ -324,6 +346,9 @@ def convert_markdown_to_wechat_html(
           (忽略大小写和前导空白),直接退化为纯文本
         - 图片 ![alt](url) 的 alt/url 经 html.escape(quote=True) 处理
         """
+        # 0. 行内代码先换成占位符,免得第 1 步把它的内容再转义一遍
+        text, codes = _stash_inline_code(text, styles["code_inline"])
+
         # 1. 先把原始 <,> 转义掉 ── 禁止 <script> 透传
         text = text.replace("<", "&lt;").replace(">", "&gt;")
 
@@ -346,13 +371,7 @@ def convert_markdown_to_wechat_html(
             return f'<a href="{safe_url}" style="{styles["a"]}">{link_text}</a>'
         text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', _link_sub, text)
 
-        # 4. 行内代码 `code`
-        text = re.sub(
-            r'`([^`]+)`',
-            lambda m: f'<code style="{styles["code_inline"]}">{_escape_html(m.group(1))}</code>',
-            text,
-        )
-        # 5. 扩展行内标记(==/++/%%/&&/!!/@@/^^)—— 要在 ** 之前处理
+        # 4. 扩展行内标记(==/++/%%/&&/!!/@@/^^)—— 要在 ** 之前处理
         for pattern, key in INLINE_MARKS:
             style_str = highlights.get(key, "")
             if not style_str:
@@ -362,21 +381,22 @@ def convert_markdown_to_wechat_html(
                 lambda m, s=style_str: f'<span style="{s}">{m.group(1)}</span>',
                 text,
             )
-        # 6. 粗体 **text**
+        # 5. 粗体 **text**
         text = re.sub(
             r'\*\*([^*\n]+)\*\*',
             lambda m: f'<strong style="{styles["strong"]}">{m.group(1)}</strong>',
             text,
         )
-        # 7. 斜体 *text*
+        # 6. 斜体 *text*
         text = re.sub(
             r'(?<!\*)\*([^*\n]+)\*(?!\*)',
             lambda m: f'<em style="{styles["em"]}">{m.group(1)}</em>',
             text,
         )
-        # 8. 收尾:把游离的 & 转成 &amp;(不影响已生成的 &lt;/&gt;/&amp;/&#...)
+        # 7. 收尾:把游离的 & 转成 &amp;(不影响已生成的 &lt;/&gt;/&amp;/&#...)
         text = re.sub(r'&(?!(?:[a-zA-Z][a-zA-Z0-9]{1,31}|#[0-9]{1,7}|#x[0-9a-fA-F]{1,6});)', '&amp;', text)
-        return text
+        # 8. 放回第 0 步换走的行内代码
+        return _restore_inline_code(text, codes)
 
     for line in lines:
         stripped = line.strip()
