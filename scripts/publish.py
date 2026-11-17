@@ -54,7 +54,6 @@ BRIEF_NAME = "brief.md"          # 文章目录下的 brief,提供 experiences �
 ADVISORY_PRINT_MAX = 30         # 控制台最多逐条列出的条数(完整清单用 ai_score.py --advisory 看)
 LINE_SAMPLE_MAX = 8             # 超量规则一组里最多列出的行号
 NO_MD_PATH = "_no_md_path"      # 缺口 id:没给文章路径,核对不了 humanize_log.md
-KEEP_OVERFLOW = "_keep_overflow"  # humanize_log.uncovered 的汇总缺口 id:「保留」行过多
 UNSOURCED_PREFIX = "unsourced_"   # 出处核对类规则 id 前缀(保留理由必须带出处)
 STAGE_HINT = "SKILL.md 改稿 pass(阶段 3.5)"
 HTML_NO_GATE_WARNING = ("\n" + "!" * 60 + "\n[警告] --html 不做 AI 味检测(总分/同形字硬门/humanize_log 都不查)。\n"
@@ -76,43 +75,29 @@ def strip_zero_width_chars(text):
 
 def run_ai_score_gate(md_content, threshold=None, mode="news", *,
                       md_path=None, title=None, digest=None, account=None):
-    """AI 味检测门禁:总分超阈值、同形字硬门、humanize_log 未覆盖 advisory 任一成立即 SystemExit(1)。
+    """发布预检：风格只提示；同形字、未核对亲历和引语拒发。
 
-    微信和头条两条发布链路共用 —— 抽出来是为了避免两边各写一份报告打印,
-    以及避免两边的阈值默认值漂移。
-
-    Args:
-        md_content: Markdown 原文(调用方先过 strip_zero_width_chars)
-        threshold: 失败阈值。None 时用 ai_score.DEFAULT_THRESHOLD
-        mode: "news"(长文)或 "newspic"(贴图短文本)
-        md_path: 文章路径。读同目录 brief.md、核对 humanize_log.md;有 advisory 却没给路径时拒发
-        title / digest: 最终要发布的标题/摘要,调用方先确定再传,保证查的就是发出去的那一份;
-                        None 时 ai_score 取 front matter title 或 H1 / H1 后的引用块
-        account: 账号 key(main/tech),启用账号禁用口头禅检查
+    threshold 保留为离线风格诊断阈值，不参与发布决策。
+    md_path 用于从同目录 brief/research 核对出处；只有出处缺口才要求路径和记录。
     """
-    _check_ai_score, _DEFAULT_THRESHOLD = _load_ai_score()
-
-    # 使用 ai_score.DEFAULT_THRESHOLD 作为默认值，保证 CLI 与库行为一致
-    _threshold = threshold if threshold is not None else _DEFAULT_THRESHOLD
-    ctx = {"title": title, "digest": digest, "account": account, "brief_text": _read_brief(md_path)}
-    print("\n[预检] AI 味检测...")
-    passed, report = _check_ai_score(md_content, _threshold, mode=mode, **ctx)
-    total, hard = report.get("total_score"), report.get("hard_fail")
-    print(f"  总分: {total} / 100  (阈值 {_threshold})")
+    check_score, default_threshold = _load_ai_score()
+    diagnostic_threshold = default_threshold if threshold is None else threshold
+    ctx = {"title": title, "digest": digest, "account": account, "brief_text": _read_brief(md_path, direct=mode == "newspic")}
+    print("\n[预检] 写作风格提示与出处检查...")
+    _, report = check_score(md_content, diagnostic_threshold, mode=mode, **ctx)
+    print(f"  风格参考分: {report.get('total_score')} / 100  (只供编辑参考，不决定发布)")
     advisory = report.get("advisory") or []
     _print_advisory(advisory)
     _print_artifacts(report.get("artifacts") or [])
+    hard = report.get("hard_fail")
     if hard:
         print(f"  结果: 未通过硬门 {hard}(同形字):{_hard_fail_where(report)}")
-    score_failed = not passed and (not hard or total >= _threshold)
-    if score_failed:
-        _print_score_failure(report, _threshold)
-    # 先把三类问题都打印出来再统一拒发,省得改一类、重跑、再撞下一类
-    gaps = _humanize_log_gaps(advisory, md_content, md_path, ctx=ctx) if advisory else []
-    if passed and not gaps:
-        print("  结果: 通过")
+    sources = [a for a in advisory if a.get("id", "").startswith(UNSOURCED_PREFIX)]
+    gaps = _humanize_log_gaps(sources, md_content, md_path, ctx={**ctx, "mode": mode}) if sources else []
+    if not hard and not gaps:
+        print("  结果: 通过发布预检；风格提示由编辑判断")
         return
-    _print_block_hints(hard=hard, gaps=gaps, score_failed=score_failed)
+    _print_block_hints(hard=hard, gaps=gaps)
     raise SystemExit(1)
 
 
@@ -123,7 +108,7 @@ def _hard_fail_where(report):
 
 
 def _load_ai_score():
-    """导入检测器;失败就拒发(fail-closed):少拷一个模块不能让三道检查静默跳过。"""
+    """导入检测器;失败就拒发(fail-closed):缺模块时不能静默跳过出处与字符检查。"""
     try:
         from ai_score import check_ai_score, DEFAULT_THRESHOLD
     except ImportError as exc:
@@ -133,9 +118,9 @@ def _load_ai_score():
     return check_ai_score, DEFAULT_THRESHOLD
 
 
-def _read_brief(md_path):
-    """文章同目录的 brief.md 文本;不存在返回 None。"""
-    path = Path(md_path).parent / BRIEF_NAME if md_path else None
+def _read_brief(md_path, *, direct=False):
+    """读取同目录 brief.md；贴图 direct 模式读取实际输入文件；不存在返回 None。"""
+    path = (Path(md_path) if direct else Path(md_path).parent / BRIEF_NAME) if md_path else None
     return path.read_text(encoding="utf-8") if path and path.exists() else None
 
 
@@ -173,13 +158,13 @@ def _print_items(items):
         lines = "/".join(nums[:LINE_SAMPLE_MAX])
         more = "/…" if len(nums) > LINE_SAMPLE_MAX else ""
         count = group[0].get("count") or len(group)
-        print(f"    · [{rid}] {group[0].get('label', '')}:全文 {count} 处({lines}{more}),按规则处理")
+        print(f"    · [{rid}] {group[0].get('label', '')}:全文 {count} 处({lines}{more}),按语境判断")
     _print_lines(single)
 
 
 def _print_advisory(advisory, prefix="advisory",
-                    hint="不计分;改掉,或在 humanize_log.md 写「保留」+ 理由,超量规则一行原文填 * 即可"):
-    """打印 advisory 清单:超量规则按规则成组,零容忍位置等逐条。"""
+                    hint="风格项只提示、不要求清零；亲历/引语须核对出处"):
+    """打印风格提示：密度项分组，位置项逐条；不要求清零。"""
     if not advisory:
         return
     print(f"  {prefix}: {len(advisory)} 条({hint})")
@@ -187,21 +172,21 @@ def _print_advisory(advisory, prefix="advisory",
 
 
 def _print_artifacts(hits):
-    """计分伪影(功能性小标题、空格破折号等):已计入总分,只能直接改,不能在 humanize_log 保留。"""
+    """打印格式提示；确定的字符异常另由硬门检查。"""
     if hits:
-        print(f"  artifacts: {len(hits)} 处(计分伪影,直接改,不能保留)")
+        print(f"  artifacts: {len(hits)} 处(格式提示，不阻断发布)")
         _print_lines(hits)
 
 
 def _humanize_log_gaps(advisory, md_content, md_path, *, ctx):
-    """humanize_log.md 覆盖检查(D1:超量规则按规则、零容忍位置逐条)。返回缺口,非空即应拒发。"""
+    """只核对出处类记录；普通风格命中不进入发布硬门。"""
     import humanize_log
 
     if not md_path:   # fail-closed:没有路径就核对不了 log,不能当作已覆盖
         print("  结果: 未提供文章路径,无法核对 humanize_log.md")
         return [{"id": NO_MD_PATH, "line": 0, "excerpt": "", "message": "未提供文章路径"}]
     # 与 ai_score.py --check-log 同一个入口:同目录 brief.md / research.md 用于核对 unsourced_* 的出处
-    gaps, log_path = humanize_log.check_article(md_path, advisory, md_content)
+    gaps, log_path = humanize_log.check_article(md_path, advisory, md_content, brief_text=ctx.get("brief_text"))
     if not gaps:
         print(f"  humanize_log.md: {_row_count(advisory)} 项 advisory 均有「保留」记录")
         return []
@@ -210,20 +195,16 @@ def _humanize_log_gaps(advisory, md_content, md_path, *, ctx):
         print(f"    文件不存在:需要 {_row_count(advisory)} 行(超量规则每条一行,逐条项每处一行)")
     else:
         _print_gaps(gaps)
-    if any(g.get("id") != KEEP_OVERFLOW for g in gaps):   # 只是保留过多时骨架已经齐了,不用再生成
+    if gaps:
         print("  生成/补全骨架(已有行不动,只追加缺的条目;处理列填「保留」,理由至少 6 个字):")
         print("    " + _log_template_command(md_path, ctx))
     return gaps
 
 
 def _print_gaps(gaps):
-    """未覆盖项:「保留」过多排最前(不显示上限,D3),其余按规则/逐条列出。"""
-    overflow = [g for g in gaps if g.get("id") == KEEP_OVERFLOW]
-    rest = [g for g in gaps if g.get("id") != KEEP_OVERFLOW]
-    print(f"    {len(overflow) + _row_count(rest)} 项未通过(处理列须恰好是「保留」且理由有效;"
-          "超量规则原文填 * 可按规则保留;删/改的条目改完重跑会自动消失):")
-    for g in overflow:
-        print(f"    · 「保留」过多(已有 {g.get('count')} 处):多出的请改写,不要靠保留过关")
+    """打印未覆盖的出处项，保留一对一匹配和来源核对要求。"""
+    rest = gaps
+    print(f"    {_row_count(rest)} 项出处待核对(需要有效的「保留」行和出处):")
     _print_items(rest)
     if any(str(g.get("id", "")).startswith(UNSOURCED_PREFIX) for g in rest):
         print("    · unsourced_experience(亲历)的保留理由只认 brief:brief L<行号>(必须是 experiences 那一行)"
@@ -231,22 +212,16 @@ def _print_gaps(gaps):
         print("    · unsourced_quote(引语)另认 URL、issue/PR 号、@用户名;写 research.md / brief materials 时要有一行对得上")
 
 
-def _print_block_hints(*, hard, gaps, score_failed):
-    """拒发时按原因分别给下一步(三类可能同时成立)。"""
+def _print_block_hints(*, hard, gaps):
+    """只对字符硬门与出处缺口给出拒发原因。"""
     print("\n  发布已阻止:")
     if hard:
-        print("    · 同形字硬门:把混进正文/标题/摘要的西里尔、希腊字母或康熙部首换回正常字符"
-              "(位置见上面的「未通过硬门」行);这一项不能靠 humanize_log 保留")
-    ids = {g.get("id") for g in gaps}
-    if NO_MD_PATH in ids:
-        print("    · 缺文章路径:带上 article.md 的路径重跑,门禁要核对同目录的 humanize_log.md 与 brief.md")
-    if KEEP_OVERFLOW in ids:
-        print(f"    · 「保留」过多:回到 {STAGE_HINT},把多出的条目改掉(改掉的重跑后自动消失)")
-    if ids - {NO_MD_PATH, KEEP_OVERFLOW}:
-        print(f"    · humanize_log 未覆盖:回到 {STAGE_HINT},按上面的清单定点改;确需保留的写「保留」+ 理由")
-    if score_failed:
-        print(f"    · 总分超限:回到 {STAGE_HINT},按上面的失分维度改;humanize_log 的保留不抵总分")
-    print("  人自己写的稿子可用 --skip-ai-score 跳过此检测(模型生成的稿子不要用)。")
+        print("    · 同形字硬门:把混进正文/标题/摘要的西里尔、希腊字母或康熙部首换回正常字符")
+    if any(g.get("id") == NO_MD_PATH for g in gaps):
+        print("    · 缺文章路径:带上 article.md 路径，以便核对 brief.md / research.md 的出处")
+    elif gaps:
+        print("    · 出处未核对:补可核对的亲历/引语来源；没有来源就删除相关事实性表述")
+    print("  风格分数与普通 advisory 不影响此判定。")
 
 
 def _log_template_command(md_path, ctx):
@@ -255,35 +230,18 @@ def _log_template_command(md_path, ctx):
     import zh_tells
 
     parts = ["python3", str(Path(__file__).parent / "ai_score.py"), str(md_path), "--advisory", "--log-template"]
-    brief_path = Path(md_path).parent / BRIEF_NAME
+    is_newspic = ctx.get("mode") == "newspic"
+    brief_path = Path(md_path) if is_newspic else Path(md_path).parent / BRIEF_NAME
+    if is_newspic:
+        parts.append("--newspic-brief")
     if ctx.get("brief_text") is not None:
         parts += ["--brief", str(brief_path)]
     if ctx.get("account") in zh_tells.ACCOUNT_BANNED:   # ai_score CLI 只接受有禁用词表的账号
         parts += ["--account", ctx["account"]]
     for flag in ("title", "digest"):
-        if ctx.get(flag):
+        if ctx.get(flag) is not None:
             parts += [f"--{flag}", ctx[flag]]
     return " ".join(shlex.quote(p) for p in parts)
-
-
-def _print_score_failure(report, threshold):
-    """总分超阈值时的失分明细。"""
-    total = report.get("total_score")
-    print(f"  结果: 未通过 AI 味检测(总分 {total} >= 阈值 {threshold})")
-    dims = report.get("dimensions", {}) or {}
-    if dims:
-        print("  失分维度:")
-        for name, info in dims.items():
-            score = info.get("score") if isinstance(info, dict) else info
-            print(f"    · {name}: {score}")
-    hit_phrases = report.get("hit_phrases") or []
-    if hit_phrases:
-        print("  命中 AI 套话:")
-        for s in hit_phrases[:10]:
-            print(f"    · {s}")
-    hit_vocab = report.get("hit_vocab") or []
-    if hit_vocab:
-        print("  命中 AI 高频词: " + ", ".join(str(v) for v in hit_vocab[:15]))
 
 
 def _account_key(account_name=None):
@@ -622,11 +580,11 @@ def publish_from_brief(
     print(f"图片:     {len(image_paths)} 张  (首张 {image_paths[0].name} 为封面)")
     print("-" * 60)
 
-    # AI 味 gate(newspic 模式):标题同形字、短文本打分可拒发;短文本/要点/标题的 advisory 只打印
+    # 贴图与长文共用出处/字符硬门；风格分数与普通 advisory 只打印
     if not skip_ai_score:
         _newspic_title_gate(final_title)
-        if short_text:
-            _newspic_short_text_gate(short_text, ai_score_threshold, _account_key(final_account))
+        _newspic_short_text_gate(short_text, ai_score_threshold, _account_key(final_account),
+                                 md_path=brief_path, title=final_title)
         _print_card_advisory(card_points(sections), final_title)
 
     # 验证 API 连接(fail fast,避免图片上传一半才发现 token 错)
@@ -671,31 +629,10 @@ def publish_from_brief(
     return result
 
 
-def _newspic_short_text_gate(short_text, threshold, account):
-    """贴图短文本:按 newspic 权重打分,超阈值或命中硬门 → SystemExit(1);advisory 只打印。"""
-    check_ai_score, _DEFAULT_THRESHOLD = _load_ai_score()
-    _threshold = threshold if threshold is not None else _DEFAULT_THRESHOLD
-    print(f"\n[预检] AI 味检测(newspic 模式,阈值 {_threshold})...")
-    passed, report = check_ai_score(short_text, _threshold, mode="newspic", account=account)
-    print(f"  总分: {report['total_score']} / 100")
-    _print_advisory(report.get("advisory") or [], prefix="短文本 advisory", hint="不计分,只提示不阻断")
-    if passed:
-        print("  结果: 通过")
-        return
-    if report.get("hard_fail"):
-        print(f"  结果: 未通过硬门 {report['hard_fail']}(同形字)")
-        fix = "把短文本里混进来的西里尔/希腊字母或康熙部首换回正常字符"
-    else:
-        print(f"  结果: 未通过(>= 阈值 {_threshold})")
-        fix = "重写 brief.md 的『# 短文本』段落,去掉套话"
-    hit_phrases = report.get("hit_phrases") or []
-    hit_vocab = report.get("hit_vocab") or []
-    if hit_phrases:
-        print("  命中 AI 套话: " + ", ".join(hit_phrases[:8]))
-    if hit_vocab:
-        print("  命中 AI 高频词: " + ", ".join(str(v) for v in hit_vocab[:10]))
-    print(f"\n  发布已阻止。请{fix}。\n  或用 --skip-ai-score 跳过(不推荐)。")
-    raise SystemExit(1)
+def _newspic_short_text_gate(short_text, threshold, account, *, md_path=None, title=None):
+    """贴图与长文共用出处/字符硬门；短文本风格分数只提示。"""
+    run_ai_score_gate(short_text, threshold, mode="newspic", md_path=md_path,
+                      title=title, digest="", account=account)
 
 
 def _newspic_title_gate(title):
@@ -854,12 +791,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--ai-score-threshold",
         type=float,
         default=None,
-        help="AI 味检测阈值(默认与 ai_score.DEFAULT_THRESHOLD 一致)。总分 >= 阈值则阻止发布",
+        help="离线风格参考阈值(默认与 ai_score.DEFAULT_THRESHOLD 一致)，不因分数阻止发布",
     )
     parser.add_argument(
         "--skip-ai-score",
         action="store_true",
-        help="跳过发布前的全部 AI 味检查:总分、同形字硬门、advisory、humanize_log.md 覆盖;贴图模式下跳过"
+        help="显式跳过发布预检(含同形字和出处检查)；贴图模式下跳过"
              "标题同形字、短文本打分和要点/标题 lint(零宽字符照常清除)。只用于人自己写的稿子,"
              "模型生成的稿子仍要走改稿 pass(SKILL.md 阶段 3.5)",
     )

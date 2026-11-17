@@ -3,10 +3,10 @@
 AI 味检测器(反 AI 检测自检工具)
 
 对一篇 Markdown 文章做启发式扫描,总分 0-100,越高越接近已知 AI 模式。
-低分只说明没撞上已知模式,不等于"像真人";advisory 命中项仍需逐条处理。
+低分只说明没撞上已知模式,不等于“像真人”；普通风格提示由编辑判断，出处类命中须核对。
 
-计分维度(news 权重,provisional):burstiness 句长方差 10% / phrases 套话 35% / vocab 高频词 25% /
-structural 教科书枚举 5% / punctuation 标点单调 10% / style 富文本装饰 15%;
+计分维度(news 权重,provisional):phrases 套话 35% / vocab 高频词 25% / structural 枚举 5% / style 富文本装饰 15%；
+句长与标点只保留统计，不计分，撤掉的权重不转移给其他维度；
 另加 artifacts 确定性伪影罚分(news ×0.20,newspic ×0.30)。同形字是硬门;零宽/双向控制字符先剥离再打分,另计 artifacts。
 句式层的 Claude 腔(否定对照、设问自答、金句收尾…)只出 advisory,不进总分、不改退出码(DR-3)。
 
@@ -16,7 +16,8 @@ structural 教科书枚举 5% / punctuation 标点单调 10% / style 富文本�
     python3 ai_score.py article.md --log-template --save-lint    # 同目录生成 humanize_log.md / ai_lint.json
     python3 ai_score.py brief.md --newspic-brief                  # 贴图 brief:短文本打分,要点+短文本跑 lint
 
-返回:exit 0 通过(分数 < 阈值且无硬门);exit 1 失败。
+返回：离线分数低于阈值且无字符硬门为 exit 0，否则 exit 1。
+发布不依赖该阈值布尔值，只拦字符硬门与出处缺口；--check-log 可选核对完整编辑记录。
 """
 
 import re
@@ -32,7 +33,7 @@ import zh_finders
 import zh_tells
 import zh_text as T
 
-# 默认失败阈值：总分 >= 该值视为"AI 味过重"。
+# 离线诊断阈值，不作为发布许可或自然度结论。
 # check_ai_score()、CLI --threshold 默认值和 publish.py 均应引用此常量，保持一致。
 DEFAULT_THRESHOLD: float = 45.0
 WARN_BAND: float = 10.0          # 阈值以下 WARN_BAND 分以内记为 WARN
@@ -102,8 +103,8 @@ def _burst_sentences(md_text: str) -> list:
 
 def score_burstiness(sentences: list) -> tuple:
     """
-    真人写作句长分布有"突发性"(burstiness)。
-    计算句长的变异系数(CV = stdev / mean),CV 越大越像真人。
+    兼容保留旧句长诊断，不用它推断是否真人写作。
+    计算句长的变异系数(CV = stdev / mean),CV 不代表自然度。
     转换为 0-100 的 AI 味分数(CV 越小分越高)。
     """
     if len(sentences) < 5:
@@ -265,10 +266,10 @@ def score_style(md_text: str) -> tuple:
 
 # ---------- 总评 ----------
 # 权重全部 provisional:拿到真人基线(PR-06)前,不许为"让存量稿 FAIL"调权重。
-# burstiness 在本语料上方向相反(AI 稿 CV 反而更大),降到 0.10,份额还给 phrases/vocab/style。
-WEIGHTS_NEWS = {"burstiness": 0.10, "phrases": 0.35, "vocab": 0.25, "structural": 0.05, "punctuation": 0.10, "style": 0.15}
+# 句长与标点仅保留诊断统计，不计入总分；不把撤掉的权重转给未经校准的词表。
+WEIGHTS_NEWS = {"burstiness": 0.0, "phrases": 0.35, "vocab": 0.25, "structural": 0.05, "punctuation": 0.0, "style": 0.15}
 # 贴图短文本:burstiness/structural 不稳定归 0;style 不提高(真人贴图常用 emoji 打头)
-WEIGHTS_NEWSPIC = {"burstiness": 0.0, "phrases": 0.45, "vocab": 0.35, "structural": 0.0, "punctuation": 0.10, "style": 0.10}
+WEIGHTS_NEWSPIC = {"burstiness": 0.0, "phrases": 0.45, "vocab": 0.35, "structural": 0.0, "punctuation": 0.0, "style": 0.10}
 # artifacts 不进凸组合,按加法罚分计入,避免稀释词表信号。newspic 取 0.30:非词表理论上限 48.5 ≥ 阈值,gate 能失败。
 ARTIFACT_PENALTY = {"news": 0.20, "newspic": 0.30}
 
@@ -288,10 +289,10 @@ HARD_FAIL_VERDICT = "🔴 FAIL (含同形字:形似拉丁的西里尔/希腊字�
 def _verdict(total: float, threshold: float) -> str:
     """档位由阈值派生,与退出码一致(total 须是取整后的值)。"""
     if total >= threshold:
-        return f"🔴 FAIL (≥ 阈值 {threshold:g},发布会被拦截)"
+        return f"🔴 FAIL (≥ 阈值 {threshold:g},仅离线诊断超限，不阻断发布)"
     if total >= threshold - WARN_BAND:
         return f"🟡 WARN (距阈值 {threshold:g} 不足 {WARN_BAND:g} 分,建议再改一轮)"
-    return "🟢 PASS (低于阈值;低分不等于没有 AI 味,命中项仍需逐条看)"
+    return "🟢 PASS (低于阈值;仅离线参考；低分不证明自然度)"
 
 
 def analyze(md_text: str, mode: str = "news", threshold: float = DEFAULT_THRESHOLD, *,
@@ -330,7 +331,7 @@ def analyze(md_text: str, mode: str = "news", threshold: float = DEFAULT_THRESHO
 
 def check_ai_score(md_content: str, threshold: float = DEFAULT_THRESHOLD, mode: str = "news", **ctx) -> tuple:
     """
-    库入口(publish.py 的 gate)。ctx 透传 brief_text/account/title/digest。
+    库入口：返回离线阈值诊断；publish 另按字符硬门和出处缺口决策。ctx 透传 brief_text/account/title/digest。
 
     Returns (passed, report):passed = total_score < threshold 且无 hard_fail;report 含 total_score、mode、
     verdict、dimensions(各维度原始分,含 artifacts)、hit_phrases、hit_vocab、threshold、advisory、hard_fail。
@@ -353,18 +354,18 @@ def _passed(full: dict, threshold: float) -> bool:
 
 
 def _print_advisory(items: list, artifacts: list = ()):
-    """人读输出不显示上限数字(D3):density 按规则成组,position 逐条;artifacts 一并列出(3.5a 一条命令看全)。"""
-    print(f"advisory: {len(items)} 条待处理(不计分;改掉,或在 humanize_log.md 写保留理由)")
+    """风格提示按规则分组；出处类条目需核对，其他由编辑判断。"""
+    print(f"advisory: {len(items)} 条编辑提示(风格不要求清零；亲历/引语须核对出处)")
     for rid in dict.fromkeys(a["id"] for a in items if a.get("scope") == "density"):
         group = [a for a in items if a["id"] == rid and a.get("scope") == "density"]
-        print(f"  [{rid}] {group[0]['label']}:全文 {group[0]['count']} 处 → 整体减少这种写法;"
-              f"确需保留就在 log 写一行(原文填 *)")
+        print(f"  [{rid}] {group[0]['label']}:全文 {group[0]['count']} 处 → 检查是否重复或空泛;"
+              f"有信息作用即可保留，不设次数配额")
         for a in group:
             print(f"      L{a['line']} {a['excerpt']}")
     for a in (a for a in items if a.get("scope") != "density"):
-        print(f"  [{a['id']}] L{a['line']} {a['excerpt']}  —— {a['message']}(逐条处理)")
+        print(f"  [{a['id']}] L{a['line']} {a['excerpt']}  —— {a['message']}(按语境判断)")
     if artifacts:
-        print(f"artifacts: {len(artifacts)} 条(计分伪影,直接改,不能保留)")
+        print(f"artifacts: {len(artifacts)} 条(格式提示，不阻断发布)")
         for h in artifacts:
             print(f"  [{h['id']}] L{h['line']} {h['excerpt']}")
 
@@ -415,14 +416,14 @@ def _pretty_print(report: dict):
 
 
 def _newspic_parts(brief_md: str) -> tuple:
-    """贴图 brief:返回 (短文本, 标题+要点 lint 结果, front matter 标题)。小节别名与 publish_from_brief 一致;要点按零容忍位置检查。"""
+    """贴图 brief:返回 (短文本, 标题+要点 lint 结果, front matter 标题)。小节别名与 publish_from_brief 一致;要点按位置列出风格提示。"""
     from newspic_build import parse_brief, card_points  # 懒加载:newspic_build 顶层依赖 yaml/config
     parsed = parse_brief(brief_md)
     sections, title = parsed["sections"], str((parsed["frontmatter"] or {}).get("title") or "")
-    extra = [{**a, "kind": "title", "message": f"标题:{a['message']}"} for a in zh_tells.lint("", title=title)
+    extra = [{**a, "kind": "title", "message": f"标题:{a['message']}"} for a in zh_tells.lint("", title=title, brief_text=brief_md)
              if a["kind"] == "title"] if title.strip() else []
     extra += [{**a, "kind": "point", "message": f"要点 {i}:{a['message']}"}
-              for i, p in enumerate(card_points(sections), 1) for a in zh_tells.lint("", title=p)]
+              for i, p in enumerate(card_points(sections), 1) for a in zh_tells.lint("", title=p, brief_text=brief_md)]
     return (sections.get("短文本") or sections.get("短描述") or "").strip(), extra, title
 
 
@@ -452,7 +453,7 @@ LOG_GAP_PRINT_MAX = 30     # --check-log 最多逐条列出的缺口数
 
 
 def _check_log(input_path: str, md: str, full: dict) -> bool:
-    """--check-log:与 publish 门禁同一套 humanize_log 覆盖检查(含出处核对),离线验证 3.5 的退出条件。"""
+    """--check-log:可选的完整编辑记录诊断；发布只检查其中的出处类缺口。"""
     gaps, log_path = humanize_log.check_article(input_path, full["advisory"], md)
     if not gaps:
         print(f"humanize_log 覆盖检查:通过({len(full['advisory'])} 条 advisory 均已改掉或有有效的「保留」行)")
@@ -475,14 +476,14 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="检测模式: news(长文,默认)/ newspic(贴图短文本)")
     parser.add_argument("--brief", help="brief.md 路径:用其 experiences 核对第一人称亲历与引语出处")
     parser.add_argument("--account", help="账号 key(如 main / tech):启用该账号的禁用口头禅检查")
-    parser.add_argument("--title", help="标题(零容忍检查否定对照/价值宣告)")
-    parser.add_argument("--digest", help="摘要(零容忍检查否定对照/价值宣告);缺省按 publish 同一口径从正文提取")
+    parser.add_argument("--title", help="标题(列出位置风格提示)")
+    parser.add_argument("--digest", help="摘要(列出位置风格提示);缺省按 publish 同一口径从正文提取")
     parser.add_argument("--advisory", action="store_true",
                         help="只打印 advisory 清单、artifacts 和同形字硬门(退出码按总分和同形字硬门)")
     parser.add_argument("--log-template", action="store_true", help="在输入文件同目录生成/补全 humanize_log.md 骨架")
     parser.add_argument("--save-lint", action="store_true", help="在输入文件同目录写 ai_lint.json")
     parser.add_argument("--check-log", action="store_true",
-                        help="按 publish 门禁同一口径核对同目录 humanize_log.md;有未覆盖条目则 exit 1")
+                        help="离线核对完整编辑记录；未覆盖则 exit 1（发布仅硬检查出处类）")
     parser.add_argument("--newspic-brief", action="store_true", help="输入是贴图 brief.md:短文本按 newspic 打分,要点+短文本跑 lint")
     return parser
 

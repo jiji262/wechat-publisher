@@ -186,11 +186,11 @@ def _sourced(hits: list[dict], window: str, ctx) -> list[dict]:
 
 
 def experience(units, ctx) -> list[dict]:
-    """第一人称亲历(时间词/次数/时长/经历体)。按句核对 brief experiences;链接证明不了用户亲历,不豁免。"""
+    """第一人称亲历和反应，覆盖正文、标题、摘要、小标题及图注。按句核对 brief experiences;链接证明不了用户亲历,不豁免。"""
     out = []
-    for u in T.pick(units):
+    for u in T.pick(units, R.SCOPES):
         for sm in re.finditer(r"[^。！？!?\n]+[。！？!?]?", u["_t"]):
-            m = next((m for p in R.EXPERIENCE for m in [p.search(sm.group(0))] if m), None)
+            m = next((m for p in (*R.EXPERIENCE, *R.FAKE_REACTION) for m in [p.search(sm.group(0))] if m), None)
             if m:
                 span = (sm.start() + m.start(), sm.start() + m.end())
                 out += _sourced([T.hit(u, u["_t"], span)], sm.group(0), ctx)

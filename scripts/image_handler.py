@@ -476,7 +476,7 @@ def process_article_images(md_content, temp_dir=None, base_dir=None):
     # 替换Markdown中的图片链接
     processed_md = replace_images_in_markdown(md_content, mapping)
 
-    print(f"图片处理完成：{len(mapping)}/{len(images)} 张成功上传(并发={workers})")
+    print(f"图片处理完成：{len(mapping)}/{len(resolved)} 张成功上传(并发={workers})")
     return processed_md, mapping, first_image_path
 
 

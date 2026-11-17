@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -37,7 +38,9 @@ KNOWN = {
 def _guarded_files() -> list[Path]:
     files = [ROOT / f for f in TOP_FILES]
     files += sorted((ROOT / "references").glob("*.md"))
-    files += sorted((ROOT / "assets").glob("**/*.md"))
+    # 本人样本是数据，不是写作指令；其中的真实习惯不能被禁词守卫删除。
+    files += [f for f in sorted((ROOT / "assets").glob("**/*.md"))
+              if not (f.relative_to(ROOT / "assets").parts[0] == "voices" and f.name == "samples.md")]
     return [f for f in files if f.is_file()]
 
 
@@ -103,3 +106,15 @@ def test_guard_follows_detector_patterns(tmp_path):
     doc = tmp_path / "SKILL.md"
     doc.write_text(f"其实也挺简单的\n这个快捷键用起来很顺手\n{research}三份日志\n他没说实话\n", encoding="utf-8")
     assert [(no, p) for _, no, p in _violations(doc, tmp_path)] == [(1, "指令回声变体"), (3, _norm(research))]
+
+
+def test_author_samples_are_data_not_instruction_templates(tmp_path, monkeypatch):
+    voice = tmp_path / "assets" / "voices" / "main" / "samples.md"
+    voice.parent.mkdir(parents=True)
+    voice.write_text("说实话，这是本人样本的测试夹具。", encoding="utf-8")
+    template = tmp_path / "assets" / "template.md"
+    template.write_text("说实话，这是写作指令的测试夹具。", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    files = _guarded_files()
+    assert voice not in files and template in files
+    assert _violations(template, root=tmp_path)

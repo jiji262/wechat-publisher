@@ -4,7 +4,7 @@
 ① 数字 / 反引号 / 拉丁专名 / 引号内文本四类集合在初稿与终稿间的增删(数字按数值比,2,768,000,000 与 27.68 亿相同);
 ② 终稿数字与引语在 research/brief 里找不到的(千分位、万/亿/k/M/B、% 归一;终稿可以是材料数字的四舍五入;
    引语只查有归属的直接引语和够长的引文,给概念打的短引号不查);
-③ 单段改写率(1 - SequenceMatcher.ratio)>0.7;④ 总字数缩水 >15%、段落数变化大;⑤ 新增的第一人称亲历句。
+③ 段落字符变化提醒；④ 总长度和段落数变化提醒（不要求补字）；⑤ 新增的第一人称亲历句。
     python3 scripts/fidelity_check.py article.draft.md article.md [--research research.md] [--brief brief.md] [--json]
 未给 --research/--brief 时自动找终稿同目录的 research.md / brief.md。
 """
@@ -27,9 +27,9 @@ try:  # 新增亲历句需要 zh_rules 的亲历正则与 humanize_log 的 brief
 except ImportError:  # pragma: no cover
     HL = R = None
 
-SHRINK_MAX = 0.15            # 汉字缩水超过 15%:删过头(盲评里删 24% 的稿子已被判为说明书腔)
+SHRINK_MAX = 0.15            # 长度变化提醒阈值，只用于复核，不推断自然度或要求补字
 PARA_DELTA_MAX = 0.3         # 段落数变化超过 30%
-REWRITE_MAX = 0.7            # 单段改写率上限
+REWRITE_MAX = 0.7            # 单段变化提醒阈值，不是改写许可上限
 REWRITE_MIN_HAN = 20         # 短段改几个字改写率就很高,不比
 SMALL_INT_MAX = 10           # ≤10 的裸整数多是序数/结构计数,不做溯源
 ROUND_INT_DIGITS, ROUND_INT_ZEROS = 4, 3   # ≥4 位且末尾 ≥3 个 0 的整数视为约数(3000 可对上 2,987)
@@ -144,7 +144,7 @@ def _best_match(t: str, pool: list[str]) -> tuple[float, int]:
     return best, idx
 
 def rewrites(draft_paras: list[dict], final_paras: list[dict]) -> list[dict]:
-    """终稿每段与初稿最接近段落的字级改写率;>0.7 提示重写过度(或整段新增)。"""
+    """终稿每段与初稿最接近段落的字级改写率;>0.7 提醒核对事实(允许重组或新增有依据的解释)。"""
     pool = [re.sub(r"\s+", "", p["text"]) for p in draft_paras]
     out = []
     for p in final_paras:
@@ -178,9 +178,9 @@ def _warnings(stats: dict) -> list[dict]:
     (dh, fh), (dp, fp) = stats["han"], stats["paragraphs"]
     out = []
     if dh and (dh - fh) / dh > SHRINK_MAX:
-        out.append({"id": "shrink", "message": f"终稿比初稿少 {(dh - fh) / dh:.0%} 汉字:删过头,可能只剩干货:按 SKILL.md 阶段三「作者在场」从材料里补回态度、经过和对照"})
+        out.append({"id": "shrink", "message": f"终稿比初稿少 {(dh - fh) / dh:.0%} 汉字:请核对实体、指标、数值、时间、条件和因果是否保留；去冗余无需补字"})
     if dp and abs(fp - dp) / dp > PARA_DELTA_MAX:
-        out.append({"id": "paragraphs", "message": f"段落数 {dp} → {fp},变化大"})
+        out.append({"id": "paragraphs", "message": f"段落数 {dp} → {fp},变化大，请核对论证关系；允许合并、拆分和重排"})
     return out
 
 def check(draft_md: str | None, final_md: str, *, sources: str | None = None, brief_text: str | None = None) -> dict:
@@ -233,7 +233,7 @@ def _render(res: dict) -> str:
         (dh, fh), (dp, fp), (ds, fs) = res["stats"]["han"], res["stats"]["paragraphs"], res["stats"]["similes"]
         out.append(f"汉字 {dh} → {fh} | 段落 {dp} → {fp} | 类比 {ds} → {fs}")
     items = _items(res)
-    return "\n".join(out + items + [f"共 {len(items)} 项待核对(逐条处理,在 humanize_log.md 末尾记一句处理结论)" if items else "未发现保真问题"])
+    return "\n".join(out + items + [f"共 {len(items)} 项待核对(逐条处理,在 humanize_log.md 末尾记一句处理结论)" if items else "自动检查未标出差异；仍需核对实体、数值归属、条件和因果"])
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="初稿/终稿保真核对 + 数字引语溯源:只出提示,永远 exit 0")

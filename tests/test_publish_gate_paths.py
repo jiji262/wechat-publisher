@@ -60,9 +60,8 @@ def _run_publish(monkeypatch, argv):
 def test_digest_from_later_quote_is_gated(tmp_path, monkeypatch, capsys, spy_score, tmp_config_yaml, no_network):
     """发布用的摘要是全文第一个引用块(这里在 H2 之后),gate 必须拿它过零容忍 lint。"""
     md = "# 迁移记录\n\n迁移用了两周,主要时间花在核对 key 的过期策略上。\n\n## 配置\n\n> 这次升级不是修补，而是重写。\n\n配置文件改了三处。\n"
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(_ReachedApi):
         _run_publish(monkeypatch, ["--input", str(_write(tmp_path, md))])
-    assert exc.value.code == 1
     assert spy_score[0]["digest"] == publish.extract_digest_from_markdown(md) == "这次升级不是修补，而是重写。"
     assert "[neg_contrast] L0 这次升级不是修补，而是重写。" in capsys.readouterr().out
 
@@ -70,7 +69,7 @@ def test_digest_from_later_quote_is_gated(tmp_path, monkeypatch, capsys, spy_sco
 def test_title_fallback_without_h1_is_gated(tmp_path, monkeypatch, capsys, spy_score, tmp_config_yaml, no_network):
     """没有 H1 时发布用正文第一行当标题(不是 front matter 的 title),gate 查的也得是它。"""
     md = "---\ntitle: Redis 7.2 迁移记录\n---\n\n真正的瓶颈其实是缓存\n\n迁移用了两周,主要时间花在核对 key 的过期策略上。\n"
-    with pytest.raises(SystemExit):
+    with pytest.raises(_ReachedApi):
         _run_publish(monkeypatch, ["--input", str(_write(tmp_path, md))])
     assert spy_score[0]["title"] == publish.extract_title_from_markdown(md) == "真正的瓶颈其实是缓存"
     assert "[salience] L0 真正的瓶颈其实是缓存" in capsys.readouterr().out
@@ -82,7 +81,7 @@ def test_title_fallback_without_h1_is_gated(tmp_path, monkeypatch, capsys, spy_s
 
 def test_gate_without_md_path_fails_closed(capsys, no_network):
     with pytest.raises(SystemExit):
-        publish.run_ai_score_gate(CONTRAST_MD)
+        publish.run_ai_score_gate("我上周试了这个工具。")
     out = capsys.readouterr().out
     assert "未提供文章路径" in out and "缺文章路径" in out
 
@@ -98,7 +97,7 @@ def test_gate_without_md_path_passes_when_nothing_to_check(capsys, no_network):
 
 def test_toutiao_direct_gate_blocks_without_log(tmp_path, no_network):
     with pytest.raises(SystemExit) as exc:
-        tp._load_and_gate(_write(tmp_path, CONTRAST_MD), None, False)
+        tp._load_and_gate(_write(tmp_path, "我上周试了这个工具。"), None, False)
     assert exc.value.code == 1
 
 
@@ -121,11 +120,11 @@ def test_toutiao_gate_gets_final_title_and_path(tmp_path, monkeypatch, manual, e
 
 
 def test_toutiao_cli_runs_gate_before_upload(tmp_path, monkeypatch, no_network):
-    """SKILL.md 写的独立入口:没有 humanize_log 也得被拦在上传之前。"""
+    """SKILL.md 写的独立入口:未核对亲历必须在上传前阻断。"""
     uploads = []
     monkeypatch.setattr(tp, "_run_cdp", lambda *a, **kw: uploads.append(a) or {"ok": True})
     monkeypatch.setattr(tp, "load_env", lambda: None)
-    monkeypatch.setattr(sys, "argv", ["toutiao_publish.py", "--input", str(_write(tmp_path, CONTRAST_MD))])
+    monkeypatch.setattr(sys, "argv", ["toutiao_publish.py", "--input", str(_write(tmp_path, "我上周试了这个工具。"))])
     with pytest.raises(SystemExit) as exc:
         tp.main()
     assert exc.value.code == 1 and uploads == []

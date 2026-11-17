@@ -1,10 +1,10 @@
-"""humanize_log.md:advisory 处理留痕的覆盖检查(D1:按规则记录)。
+"""humanize_log.md:可选的风格编辑记录与发布必需的出处覆盖检查。
 
 - density 条目(某规则全文超量):log 里一行 `规则=<id>`、`处理=保留`、原文填 `*` 或任一命中原文,即覆盖该规则全部命中;
-- position 条目(零容忍位置/零容忍规则):逐条一行,同 id 且原文匹配(去空白互为子串,且不短于 min(4 个汉字, 命中全长));
+- position 条目(逐处提示):逐条一行,同 id 且原文匹配(去空白互为子串,且不短于 min(4 个汉字, 命中全长));
   一行最多覆盖一条命中(贪心一对一,优先原文长度最接近的行),拼接多段原文只顶一条(E2);
-- 处理必须恰好是「保留」;理由去空白 ≥6 字符且不是占位;保留上限 max(3, 汉字数 // 1000):density 按行、position 按条计;
-- unsourced_* 的保留理由由 source_check 核对:指向的 brief 行 / 字段 / research 必须存在且对得上,不占上限。
+- 处理必须恰好是「保留」;理由去空白 ≥6 字符且不是占位；有效保留不设条数配额；
+- unsourced_* 的保留理由由 source_check 核对:指向的 brief 行 / 字段 / research 必须存在且对得上。
 这是文件/结构层面的确定性检查,不做语言判断(DR-3)。brief 解析在 zh_sources,这里转出以兼容旧调用。
 """
 from __future__ import annotations
@@ -18,7 +18,6 @@ from zh_sources import covered, parse_brief  # noqa: F401  旧调用方(fidelity
 from zh_text import han_count, mask_markdown
 
 LOG_NAME = "humanize_log.md"
-KEEP_MIN, KEEP_HAN_PER = 3, 1000     # 保留上限 = max(3, 汉字数 // 1000)
 REASON_MIN = 6                       # 理由去空白后至少 6 个字符
 EXCERPT_MIN_HAN = 4                  # position 行原文至少 4 个汉字(或等于命中全长)
 ANY = "*"                            # density 行原文通配
@@ -109,33 +108,19 @@ def _assign(advisory: list[dict], rows: list[dict], *, ctx: dict | None) -> list
     return out
 
 
-def keep_cap(han: int | None) -> int:
-    return max(KEEP_MIN, (han or 0) // KEEP_HAN_PER)
-
-
 def uncovered(advisory: list[dict], log_text: str, han: int | None = None, *,
               brief_text: str | None = None, research_text: str | None = None) -> list[dict]:
-    """返回未被 log 覆盖的 advisory 条目;保留行数超上限时追加一条 id=_keep_overflow 的说明。
+    """返回未被 log 覆盖的 advisory 条目；有效保留不设条数配额。
 
     unsourced_* 的保留理由由 source_check 核对:指向的 brief 行 / 字段 / research 必须存在且和命中对得上。
     """
     keeps = [r for r in parse_log(log_text) if _norm(r["action"]) == "保留" and _reason_ok(r["reason"])]
     ctx = {"brief_text": brief_text, "research_text": research_text}
-    out, rows_used, n_pos = [], set(), 0
+    out = []
     for item, i in zip(advisory, _assign(advisory, keeps, ctx=ctx)):
         if i is None:
             need = "带可核对出处的理由" if item["id"].startswith(UNCOUNTED_PREFIX) else "有效理由"
             out.append({**item, "message": f"humanize_log 缺少这条的「保留」行或{need}:{item.get('message', '')}"})
-        elif item["id"].startswith(UNCOUNTED_PREFIX):
-            continue
-        elif item.get("scope") == "density":
-            rows_used.add(i)
-        else:
-            n_pos += 1
-    count, cap = len(rows_used) + n_pos, keep_cap(han)
-    if count > cap:
-        out.append({"id": "_keep_overflow", "label": "保留过多", "line": 0, "kind": "", "excerpt": "", "count": count,
-                    "cap": cap, "scope": "position", "message": f"保留 {count} 处,超过上限:请改写,不要靠保留过关"})
     return out
 
 
@@ -154,10 +139,12 @@ def _read(path: Path) -> str | None:
     return path.read_text(encoding="utf-8") if path.exists() else None
 
 
-def check_article(md_path: str, advisory: list[dict], md_content: str) -> tuple[list[dict], Path]:
+def check_article(md_path: str, advisory: list[dict], md_content: str, *,
+                  brief_text: str | None = None) -> tuple[list[dict], Path]:
     """读文章同目录的 humanize_log.md / brief.md / research.md 做覆盖检查(publish 门禁与 ai_score --check-log 共用)。"""
     base = Path(md_path).parent
     log_path = base / LOG_NAME
     gaps = uncovered(advisory, _read(log_path) or "", han=han_count(mask_markdown(md_content)),
-                     brief_text=_read(base / "brief.md"), research_text=_read(base / "research.md"))
+                     brief_text=brief_text if brief_text is not None else _read(base / "brief.md"),
+                     research_text=_read(base / "research.md"))
     return gaps, log_path

@@ -118,8 +118,7 @@ def test_full_width_punctuation_scored():
     #8 fix: full-width punctuation (? ! ( ) — …) should count toward
     "flavor points" just like half-width equivalents.
 
-    The text with full-width ? ! ( ) should score noticeably BETTER on the
-    punctuation dimension (lower AI score) than text using only 。 .
+    这里只检查兼容的标点统计，统计分不计入总分，也不代表自然度。
     """
     # Long enough to clear the "too_short" branch in score_punctuation_flatness
     # (>= 200 chars). Each sample is the same length-ish with the same content
@@ -140,7 +139,7 @@ def test_full_width_punctuation_scored():
     flat_score, _ = ai_score.score_punctuation_flatness(flat_text)
     rich_score, _ = ai_score.score_punctuation_flatness(rich_text)
 
-    # Lower AI-score is better (more human-like). Rich text must beat flat text.
+    # 旧统计函数仍能区分标点，不再用于评价真人感。
     assert rich_score < flat_score, (
         f"full-width punctuation didn't improve score: "
         f"flat={flat_score}, rich={rich_score}"
@@ -229,35 +228,11 @@ def test_threshold_parameter_respected():
 _SCRIPTS = Path(__file__).parent.parent / "scripts"
 
 
-def _probe_max_dims() -> dict:
-    """探测各打分函数实际能达到的最大值(不手写常量,打分函数一改测试就跟着变)。"""
-    flat = ["这是一句长度完全一样的句子啊。"] * 10
-    struct = "第一,甲。第二,乙。第三,丙。\n" * 3
-    style = ("- **术语一:** 解释\n- **术语二:** 解释\n✅ 一\n🔥 二\n🚀 三\n## ==标题==\n## !!标题!!\n"
-             + "==这是一整句高亮的结论,非常重要。==\n" * 30)
-    arts = "## 开篇:钩子问句\n\n## 写在最后:总结\n\n这破玩意。其实挺简单的。我当时愣住了。\n"
-    return {
-        "burstiness": ai_score.score_burstiness(flat)[0],
-        "punctuation": ai_score.score_punctuation_flatness("这是一段没有任何人味标点的文字" * 40 + "。")[0],
-        "structural": ai_score.score_structural_perfection(struct)[0],
-        "style": ai_score.score_style(style)[0],
-        "artifacts": ai_score.zh_tells.score_artifacts(arts)[0],
-    }
-
-
 @pytest.mark.parametrize("mode", ["news", "newspic"])
-def test_gate_can_fail_without_lexicon_hits(mode):
-    """不计 phrases/vocab 时的理论最高分 ≥ 阈值:gate 不是摆设。"""
-    mx = _probe_max_dims()
-    assert mx == {"burstiness": 90, "punctuation": 85, "structural": 100, "style": 100, "artifacts": 100}
-    w = ai_score._weights_for(mode)
-    ceiling = sum(mx[d] * w[d] for d in w if d not in ("phrases", "vocab")) + 100 * ai_score.ARTIFACT_PENALTY[mode]
-    assert ceiling >= ai_score.DEFAULT_THRESHOLD, f"{mode} 非词表上限 {ceiling} < 阈值"
-
-
-def test_weights_are_convex():
-    for w in (ai_score.WEIGHTS_NEWS, ai_score.WEIGHTS_NEWSPIC):
-        assert abs(sum(w.values()) - 1.0) < 1e-9
+def test_diagnostic_scores_stay_bounded(mode):
+    for text in (HUMAN_SAMPLE, CLAUDE_SAMPLE, AI_SLOP_SAMPLE):
+        report = ai_score.analyze(text, mode=mode)
+        assert 0 <= report["total_ai_score"] <= 100
 
 
 @pytest.mark.parametrize("th,total,tag", [

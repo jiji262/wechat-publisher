@@ -94,11 +94,11 @@ Claude 读 `card_plan.json`,按每张卡的 `prompt` 字段调项目内置 `scri
 
 ```bash
 # publish.py 会自动在发送前跑一次,这里是手动预检
-# brief 里的 title 自动读出,按零容忍位置检查(含同形字硬门,和 publish 一致);要点逐条按零容忍位置检查
+# brief 里的 title 自动读出,列出风格提示并检查同形字；要点逐条提示，不因句式拒发
 python3 scripts/ai_score.py brief.md --newspic-brief --advisory
 ```
 
-分数超阈值 → 改短文本。advisory 是主要依据:逐条按改稿清单的 D 层顺序处理(先看这句在干什么:套路换成具体的,纯复述才删),分数低不代表没问题。
+风格分数只供编辑参考，命中不要求清零。短文本的亲历/反应和引语须能核对 brief 的 experiences 或来源；发布会读取这份 brief，并复用长文的出处硬门。没有来源就删除相关表述，不用虚构体验增加人味。
 
 #### 4. 发布
 
@@ -110,7 +110,7 @@ python3 scripts/publish.py --account main --type newspic --brief brief.md --imag
 
 `publish.py` 做的事:
 1. 从 brief.md 读 frontmatter + 短文本
-2. 跑 AI 味 gate(短文本按 newspic 模式打分,超阈值就停);标题含同形字直接拒发;标题、要点、短文本的 advisory 只打印,不阻断
+2. 跑发布预检：短文本风格分数和普通 advisory 只提示；同形字及短文本未核对的亲历/引语阻断，出处缺口不能靠风格保留豁免
 3. 扫 `brief.md 同目录/images/*.{png,jpg,jpeg,webp}`,按文件名排序作为展示顺序
 4. 逐张上传为微信永久素材(每张占一个永久素材名额,5000 上限)
 5. 调 `draft/add` 建 newspic 草稿

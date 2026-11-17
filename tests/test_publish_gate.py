@@ -2,7 +2,7 @@
 publish.py 的 AI 味门禁集成测试。
 
 守的是"发布前最后一道闸"的接线,不是检测规则本身(规则在 test_zh_tells / test_ai_score):
-- advisory 没在 humanize_log.md 里记录 → 拒发;记录完整 → 放行(D1:超量规则按规则一行)
+- 普通风格 advisory 仅提示；出处类缺口仍拒发
 - 同形字硬门 → 拒发;零宽字符不拦,发布前自动清除(D2)
 - 三类拒发各给各的下一步;人读输出不显示上限(D3)
 - --skip-ai-score → 整个门禁不跑
@@ -86,26 +86,22 @@ def fake_score(monkeypatch):
 # run_ai_score_gate:四种结局
 # ---------------------------------------------------------------------------
 
-def test_advisory_without_log_blocks(article, fake_score, capsys, no_network):
+def test_advisory_without_log_only_warns(article, fake_score, capsys, no_network):
     state, _ = fake_score
     state["result"] = _report(advisory=[ADVISORY_ITEM])
-    with pytest.raises(SystemExit) as exc:
-        publish.run_ai_score_gate(CLEAN_MD, md_path=article)
-    assert exc.value.code == 1
+    publish.run_ai_score_gate(CLEAN_MD, md_path=article)
     out = capsys.readouterr().out
-    assert "humanize_log 覆盖检查未通过" in out
-    assert "--log-template" in out, "拒发时要告诉用户怎么生成 log 骨架"
+    assert "[neg_contrast]" in out and "结果: 通过" in out
+    assert "--log-template" not in out
 
 
-def test_advisory_with_unkept_row_blocks(article, fake_score, capsys, no_network):
-    """log 里写了'改',但 lint 仍命中 → 说明没改掉,照样拒发。"""
+def test_advisory_with_unkept_row_does_not_block(article, fake_score, capsys, no_network):
     state, _ = fake_score
     state["result"] = _report(advisory=[ADVISORY_ITEM])
     row = f"| neg_contrast | 9 | {ADVISORY_ITEM['excerpt']} | 改 |  |\n"
     (article.parent / "humanize_log.md").write_text(LOG_HEADER + row, encoding="utf-8")
-    with pytest.raises(SystemExit):
-        publish.run_ai_score_gate(CLEAN_MD, md_path=article)
-    assert "1 项未通过" in capsys.readouterr().out
+    publish.run_ai_score_gate(CLEAN_MD, md_path=article)
+    assert "结果: 通过" in capsys.readouterr().out
 
 
 def test_advisory_with_complete_log_passes(article, fake_score, capsys, no_network):
@@ -128,11 +124,10 @@ def test_hard_fail_blocks_even_with_low_score(article, fake_score, capsys, no_ne
     assert "未通过 AI 味检测(总分" not in out, "低分时不该再报总分失败"
 
 
-def test_score_over_threshold_still_blocks(article, fake_score, no_network):
+def test_score_over_threshold_only_warns(article, fake_score, no_network):
     state, _ = fake_score
     state["result"] = _report(passed=False, total=60.0)
-    with pytest.raises(SystemExit):
-        publish.run_ai_score_gate(CLEAN_MD, md_path=article)
+    publish.run_ai_score_gate(CLEAN_MD, md_path=article)
 
 
 @pytest.mark.parametrize("swap", [("升级后跑一遍", "用ΑΙ升级后跑一遍"), ("claude doctor", "Gооgle")],
@@ -153,9 +148,8 @@ def test_real_adversarial_chars_block(article, capsys, no_network, swap):
 
 @pytest.mark.parametrize("report, expect, absent", [
     (_report(passed=False, total=5.0, hard_fail="adversarial_chars"), "同形字硬门", ("humanize_log 未覆盖", "总分超限")),
-    (_report(advisory=[ADVISORY_ITEM]), "humanize_log 未覆盖", ("同形字硬门", "总分超限")),
-    (_report(passed=False, total=60.0), "总分超限", ("同形字硬门", "humanize_log 未覆盖")),
-], ids=["hard", "log", "score"])
+    (_report(advisory=[{**ADVISORY_ITEM, "id": "unsourced_experience"}]), "出处未核对", ("同形字硬门", "总分超限")),
+], ids=["hard", "source"])
 def test_block_hint_matches_reason(article, fake_score, capsys, no_network, report, expect, absent):
     state, _ = fake_score
     state["result"] = report
@@ -164,16 +158,13 @@ def test_block_hint_matches_reason(article, fake_score, capsys, no_network, repo
     out = capsys.readouterr().out
     assert expect in out and not any(a in out for a in absent)
     assert "人味化" not in out
-    if expect != "同形字硬门":
-        assert "改稿 pass(阶段 3.5)" in out
 
 
 def test_density_printed_by_rule_without_cap(article, fake_score, capsys, no_network):
     """超量规则按规则成组,只给「全文 N 处」;log 一行原文填 * 就覆盖整条规则。"""
     state, _ = fake_score
     state["result"] = _report(advisory=[_density(9), _density(11), _density(13)])
-    with pytest.raises(SystemExit):
-        publish.run_ai_score_gate(CLEAN_MD, md_path=article)
+    publish.run_ai_score_gate(CLEAN_MD, md_path=article)
     out = capsys.readouterr().out
     assert "[neg_contrast] 否定对照/翻案:全文 3 处(L9/L11/L13)" in out
     assert "上限" not in out and "cap" not in out
@@ -183,20 +174,13 @@ def test_density_printed_by_rule_without_cap(article, fake_score, capsys, no_net
     assert "结果: 通过" in capsys.readouterr().out
 
 
-def test_keep_overflow_printed_without_cap(article, fake_score, capsys, no_network):
-    """保留行超过上限:提示改写,但不把上限数字打出来(D3)。"""
-    items = [{**ADVISORY_ITEM, "id": rid, "excerpt": f"{rid} 这一句是需要保留的原文"}
-             for rid in ("salience", "staged", "self_qa", "strawman")]
+def test_multiple_style_keeps_do_not_force_rewriting(article, fake_score, capsys, no_network):
+    items = [{**ADVISORY_ITEM, "id": rid} for rid in ("salience", "staged", "self_qa", "strawman")]
     state, _ = fake_score
     state["result"] = _report(advisory=items)
-    rows = "".join(f"| {a['id']} | 9 | {a['excerpt']} | 保留 | 这是引用的官方原话 |\n" for a in items)
-    (article.parent / "humanize_log.md").write_text(LOG_HEADER + rows, encoding="utf-8")
-    with pytest.raises(SystemExit):
-        publish.run_ai_score_gate(CLEAN_MD, md_path=article)
+    publish.run_ai_score_gate(CLEAN_MD, md_path=article)
     out = capsys.readouterr().out
-    assert "「保留」过多(已有 4 处)" in out and "「保留」过多:回到 SKILL.md 改稿 pass(阶段 3.5)" in out
-    assert "上限" not in out
-    assert "humanize_log 未覆盖" not in out and "--log-template" not in out, "只是保留过多时骨架已齐,不再提示生成"
+    assert "结果: 通过" in out and "保留过多" not in out
 
 
 def test_gate_passes_brief_and_context(article, fake_score, no_network):
@@ -249,7 +233,7 @@ def test_skip_ai_score_bypasses_gate(article, tmp_path, monkeypatch, stub_api, t
 
 
 def test_manual_digest_goes_through_lint(article, monkeypatch, capsys, tmp_config_yaml, no_network):
-    """手动 --digest 走真实 lint:摘要里的否定对照是零容忍位置,必须列出并拒发。"""
+    """手动 --digest 走真实 lint:摘要里的否定对照必须列出，但不因风格阻断。"""
     seen = []
     real = ai_score.check_ai_score
 
@@ -259,10 +243,9 @@ def test_manual_digest_goes_through_lint(article, monkeypatch, capsys, tmp_confi
 
     monkeypatch.setattr(ai_score, "check_ai_score", _spy)
     monkeypatch.setattr(publish, "get_access_token", lambda: (_ for _ in ()).throw(_ReachedApi()))
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(_ReachedApi):
         _run_main(monkeypatch, ["--input", str(article), "--author", "a", "--theme", "minimal-mono",
                                 "--digest", DIGEST])
-    assert exc.value.code == 1
     assert seen and seen[0]["digest"] == DIGEST
     assert seen[0]["account"] == "main", "账号要从配置解析出来传给 lint"
     out = capsys.readouterr().out

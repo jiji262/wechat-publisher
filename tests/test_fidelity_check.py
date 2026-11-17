@@ -191,10 +191,9 @@ def test_cli_reports_missing_explicit_research(tmp_path, capsys):
 
 
 def test_shrink_threshold_catches_moderate_cut():
-    """删掉约 20% 就要提示:盲评里删 24% 的稿子已经被判为说明书腔。"""
+    """较大删减提示核对事实，不从字数变化推断文风。"""
     paras = [P1, P2] * 5
     draft = "\n\n".join(paras) + "\n"
     final = "\n\n".join(paras[:8]) + "\n"          # 删掉 2/10 段
     ids = [w["id"] for w in FC.check(draft, final)["warnings"]]
     assert "shrink" in ids
-    assert FC.SHRINK_MAX <= 0.15

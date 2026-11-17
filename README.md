@@ -5,12 +5,12 @@
 ## 功能
 
 - **全网素材搜索**:围绕话题多轮搜索、交叉验证,筛选最新案例与权威观点
-- **AI 写作**:深度长文(常见 2500–5000 字,材料撑不起就写短),多种结构按题材选择,按跨篇指纹避开重复的结构和开头;目标是读着像账号作者本人写的
+- **AI 写作**:材料决定篇幅和结构；通过 `writing_context.py` 将当前材料、本人样本和用户改稿反馈交给独立写作 pass。没有本人样本时明确采用账号编辑风格
 - **AI 配图**:按信息点配图(`scripts/generate_image.py` 手绘信息图,或排版卡),一篇内风格统一,支持 OpenAI / Gemini 后端
 - **微信排版**:Markdown → 微信兼容 HTML,样式全内联,内置 **15 套主题**,粘贴不丢样式
 - **一键发布**:封面、标题、摘要、作者自动填好,直达草稿箱
-- **去 AI 味改稿流程**:初稿快照 → `ai_score.py` 负向模式 lint(带行号的 advisory 清单)→ 定点改稿并写 `humanize_log.md` → 全新上下文冷读 → `fidelity_check.py` 保真核对 + `fingerprint.py` 跨篇比对
-- **AI 味 gate**:`ai_score.py` 6 维加权 + 确定性伪影罚分;发布前拦截超阈值稿件和同形字(零宽字符自动清除),并检查剩余 advisory 都被 `humanize_log.md` 里的保留行覆盖。分数只能说明没踩已知的坑,不能证明像人
+- **去 AI 味改稿流程**:初稿快照 → `ai_score.py` 负向模式 lint(带行号的 advisory 清单)→ 按语境编辑(允许段落重组) → 全新上下文冷读 → `fidelity_check.py` 保真核对 + `fingerprint.py` 跨篇比对
+- **发布预检**:风格分数、普通 advisory 与格式提示只供编辑参考，不阻断发布；同形字和未核对出处的亲历/引语仍拒发，零宽字符自动清除。句长、标点不计入总分；低分不证明自然，也不证明像本人
 
 ## 安装
 
@@ -77,7 +77,7 @@ python3 scripts/wechat_api.py list-accounts
 使用 /wechat-publisher 写一篇关于"大模型 Agent 最新进展"的公众号文章
 ```
 
-Skill 自动执行 7 阶段:搜索素材 → 选结构 → 撰写 → 改稿 pass(lint + 冷读 + 保真核对)→ 生成配图 → 排版转换 → AI 味 gate → 发布草稿 →(可选)多平台同步。完整流程见 [`SKILL.md`](SKILL.md)。
+Skill 自动执行 7 阶段:搜索素材 → 按材料定结构 → 独立上下文撰写 → 改稿 pass(lint + 冷读 + 保真核对)→ 生成配图 → 排版转换 → AI 味 gate → 发布草稿 →(可选)多平台同步。完整流程见 [`SKILL.md`](SKILL.md)。
 
 ### 命令行
 
@@ -98,7 +98,7 @@ python3 scripts/publish.py --input article.md --platform toutiao
 python3 scripts/publish.py --input article.md --platform wechat,toutiao
 ```
 
-`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做图片处理 → HTML 转换 → AI 味 gate(默认阈值 45,外加 humanize_log 覆盖检查)→ 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
+`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做图片处理 → HTML 转换 → 发布预检(风格仅提示；同形字与出处缺口阻断)→ 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
 
 ## 排版主题
 
@@ -149,8 +149,8 @@ python3 scripts/publish.py --input article.md --platform wechat,toutiao
 | `40001` access_token 无效 | 检查 AppID / AppSecret |
 | `40009` 图片超 10MB | 压缩后重试 |
 | `45166` 内容不合规 | 检查敏感词或特殊 HTML 标签 |
-| `ai_score.py` 返回 FAIL | 回 SKILL.md 阶段 3.5 按命中清单定点改;`--skip-ai-score` 只用于用户本人写的稿子 |
-| humanize_log 覆盖检查失败 | 对列出的条目改稿,或在 `humanize_log.md` 补保留行(写法见 `references/anti-ai-checklist.md` D 层) |
+| `ai_score.py` 返回 FAIL | 离线分数超阈值不等于不能发布；按语境编辑。同形字须清理，亲历/引语须核对来源 |
+| humanize_log 覆盖检查失败 | 发布只强制核对出处类条目；普通风格记录可选。亲历/引语无来源就删，或补可核对的保留行(写法见 `references/anti-ai-checklist.md` D 层) |
 
 ## 注意事项
 

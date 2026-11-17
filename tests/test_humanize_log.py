@@ -67,11 +67,11 @@ def test_position_row_cannot_be_gamed(row):
     assert _gap_ids([ADV[2]], _log([row])) == ["fake_reaction"]
 
 
-def test_keep_overflow_scales_with_length_and_skips_unsourced():
+def test_valid_keeps_do_not_have_length_based_quota():
     many = [{**ADV[2], "line": i, "excerpt": f"第{i}句我看了三遍。"} for i in range(5)]
     log = _log([("fake_reaction", i, f"第{i}句我看了三遍。", "保留", REASON) for i in range(5)])
     over = HL.uncovered(many, log, han=1500)
-    assert [u["id"] for u in over] == ["_keep_overflow"] and over[0]["cap"] == HL.KEEP_MIN
+    assert over == []
     assert HL.uncovered(many, log, han=6000) == []
     src = [{**m, "id": "unsourced_quote"} for m in many]
     src_log = log.replace("fake_reaction", "unsourced_quote").replace(REASON, "见 https://example.com/thread 原帖")
@@ -88,7 +88,7 @@ def test_joined_excerpt_covers_only_one_position_hit():
     joined = _log([("salience", 3, "".join(h["excerpt"] for h in hits), "保留", REASON)])
     assert _gap_ids(hits, joined, han=300) == ["salience"] * 3
     honest = _log([("salience", h["line"], h["excerpt"], "保留", REASON) for h in hits])
-    assert _gap_ids(hits, honest, han=300) == ["_keep_overflow"]
+    assert _gap_ids(hits, honest, han=300) == []
 
 
 def test_duplicate_hits_need_one_row_each():
