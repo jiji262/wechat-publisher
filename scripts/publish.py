@@ -94,11 +94,27 @@ def run_ai_score_gate(md_content, threshold=None, mode="news", *,
         print(f"  结果: 未通过硬门 {hard}(同形字):{_hard_fail_where(report)}")
     sources = [a for a in advisory if a.get("id", "").startswith(UNSOURCED_PREFIX)]
     gaps = _humanize_log_gaps(sources, md_content, md_path, ctx={**ctx, "mode": mode}) if sources else []
-    if not hard and not gaps:
+    punct = _halfwidth_residual(md_content, title, digest)
+    if not hard and not gaps and not punct:
         print("  结果: 通过发布预检；风格提示由编辑判断")
         return
-    _print_block_hints(hard=hard, gaps=gaps)
+    _print_block_hints(hard=hard, gaps=gaps, punct=punct, md_path=md_path)
     raise SystemExit(1)
+
+
+def _halfwidth_residual(md_content, title, digest):
+    """中文语境里残留的半角标点(与 zh_punct --write 同一判定)。标题/摘要已在正文里的不重复列。"""
+    import zh_punct
+
+    found = [f"L{r['line']} {r['excerpt']}" for r in zh_punct.halfwidth_left(md_content)]
+    for label, text in (("标题", title), ("摘要", digest)):
+        if text and text not in md_content and zh_punct.halfwidth_left(text):
+            found.append(f"{label} {text}")
+    if found:
+        print(f"  半角标点: {len(found)} 处中文语境里仍是半角")
+        for f in found[:ADVISORY_PRINT_MAX]:
+            print(f"    · {f}")
+    return found
 
 
 def _hard_fail_where(report):
@@ -212,11 +228,15 @@ def _print_gaps(gaps):
         print("    · unsourced_quote(引语)另认 URL、issue/PR 号、@用户名;写 research.md / brief materials 时要有一行对得上")
 
 
-def _print_block_hints(*, hard, gaps):
-    """只对字符硬门与出处缺口给出拒发原因。"""
+def _print_block_hints(*, hard, gaps, punct=(), md_path=None):
+    """只对字符硬门、半角标点与出处缺口给出拒发原因。"""
     print("\n  发布已阻止:")
     if hard:
         print("    · 同形字硬门:把混进正文/标题/摘要的西里尔、希腊字母或康熙部首换回正常字符")
+    if punct:
+        target = md_path or "<article.md>"
+        print(f"    · 半角标点:运行 python3 {Path(__file__).parent / 'zh_punct.py'} {target} --write 转成全角;"
+              "--title/--digest 手动改;要保留半角的字面量放进反引号")
     if any(g.get("id") == NO_MD_PATH for g in gaps):
         print("    · 缺文章路径:带上 article.md 路径，以便核对 brief.md / research.md 的出处")
     elif gaps:

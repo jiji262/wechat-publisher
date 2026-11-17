@@ -178,7 +178,7 @@ materials:
 
 3. 没有独立上下文工具时，提示用户在新会话使用这份输入；用户要求在当前会话继续也可，但要说明上下文未隔离，不假装已经隔离。不得借此绕过宿主的授权与安全规则。
 
-4. 初稿回到主会话后，补 H1 标题和必要摘要，再按下面的发布排版约定处理；篇幅由材料决定，不凑字数、段数、判断句或修辞次数。写作原则与两账号声音说明的真源见 [references/writing-guide.md](references/writing-guide.md)。
+4. 初稿回到主会话、写成 `<dir>/article.md` 后，先把中文语境里的半角标点转成全角：`python3 scripts/zh_punct.py <dir>/article.md --write`（不带 `--write` 只列残留）。这一步在 3.5a 存快照之前做，lint、保真核对和发布看到的是同一份。之后补 H1 标题和必要摘要，再按下面的发布排版约定处理；篇幅由材料决定，不凑字数、段数、判断句或修辞次数。写作原则与两账号声音说明的真源见 [references/writing-guide.md](references/writing-guide.md)。
 
 **标题**：成稿后再定。从正文里不同的具体事实出发，写几个角度不同的候选，按「准确 > 清晰 > 有趣」的顺序挑：先保证点名的技术对象和结论跟正文一致，再让读者一眼看出这是原理、排障、对比还是复盘，最后才考虑吸引力。标题许诺的内容正文必须兑现。把候选和推荐项报给用户，用户没回应就用推荐项，不阻塞流程。
 
@@ -373,7 +373,7 @@ accounts:
 `ai_score.py` 是**负向模式诊断**，不鉴定作者身份，也不证明自然度。发布前区分两类结果：
 
 1. **编辑提示**：风格总分、普通 advisory、格式提示只打印，由编辑按语境取舍，不因缺少风格 log 或超阈值拒发。句长与标点维度仅保留统计，不计入总分。离线 `ai_score.py` 的阈值/退出码用于诊断，不是发布许可。
-2. **发布硬门**：同形字，以及未核对出处的亲历（包括身体/情绪反应）和引语。出处类保留理由须指向匹配的 brief experiences 或可核对引语来源；没有来源就删掉相关表述。零宽字符仍在转换前清除，`--skip-ai-score` 时也清除。检测模块缺失仍拒发。
+2. **发布硬门**：同形字；中文语境里残留的半角标点（正文、标题、摘要，判定与 `zh_punct.py` 相同，修复用 `zh_punct.py <article.md> --write`，要保留半角的字面量放进反引号）；以及未核对出处的亲历（包括身体/情绪反应）和引语。出处类保留理由须指向匹配的 brief experiences 或可核对引语来源；没有来源就删掉相关表述。零宽字符仍在转换前清除，`--skip-ai-score` 时也清除。检测模块缺失仍拒发。
 
 微信长文、头条与贴图短文本共用上述判定。出处检查是启发式，不等于已验证所有事实；保真核对仍需人工检查实体和数字归属。
 
@@ -560,6 +560,7 @@ mp-articles/<main|tech>/<YYYY-MM-DD>-<slug>/
 | `html_converter.py` | Markdown → 微信 HTML(多主题 + 行内标色) |
 | `image_handler.py` | 图片下载 / 上传 / 替换 |
 | `writing_context.py` | 只读组装独立写作输入，接入本人样本与确认的用户修改；缺样本显式降级账号编辑风格 |
+| `zh_punct.py` | 中文语境的半角标点转全角(`--write` 原地改,不带只列残留);发布预检用同一判定拦残留 |
 | `ai_score.py` | **AI 味 lint + 打分**(负向模式,只能证明没踩已知的坑)。`--mode news\|newspic`;`--advisory` / `--brief` / `--account` / `--title` / `--digest` / `--log-template` / `--save-lint` / `--newspic-brief` |
 | `zh_text.py` | (内部)中文文本工具:front matter、Markdown 遮罩、切句、文本单元(标题 / 摘要 / 小标题 / 图注) |
 | `zh_tells.py` | (内部)advisory 规则与计分伪影;规则数据在 `zh_rules.py`,结构类 / 出处类检测在 `zh_finders.py` / `zh_sources.py`,字符层在 `zh_chars.py`,标记位置在 `zh_markers.py` |
@@ -587,6 +588,7 @@ mp-articles/<main|tech>/<YYYY-MM-DD>-<slug>/
 | `48001 接口未授权` | 公众号类型不支持 | 需要已认证的服务号 / 订阅号 |
 | 总分超限 / `ai_score.py` 返回 FAIL | 命中已知 AI 模式过多 | 回改稿 pass(阶段 3.5)定点改;humanize_log 的保留不抵总分;`--skip-ai-score` 只用于用户本人写的稿子 |
 | 同形字硬门 | 正文 / 标题 / 摘要混进西里尔、希腊字母或康熙部首 | 换回正常字符,不能靠保留 |
+| 半角标点 | 中文句子里还有半角的 `, : ; ? ! ( ) "` | `python3 scripts/zh_punct.py <article.md> --write`;`--title` / `--digest` 手动改;要保留的字面量放进反引号 |
 | 出处类 humanize_log 未覆盖 | 亲历/引语缺匹配来源，或保留理由是占位 | 补可核对的来源或删除相关表述；普通风格保留不设配额 |
 | 缺文章路径 | gate 找不到同目录的 humanize_log.md / brief.md | 带上 article.md 的路径重跑 |
 | 本地图片不存在 | 正文引用的 `images/...` 还没生成或路径写错 | 按阶段四生成这些图,或删掉不需要的引用;确要发缺图草稿才加 `--allow-missing-images` |

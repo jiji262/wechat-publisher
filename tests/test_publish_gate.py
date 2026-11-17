@@ -30,9 +30,9 @@ CLEAN_MD = textwrap.dedent(
 
     ## 改动
 
-    2.1 版把项目级 hooks 的加载放到了用户级之后。旧版本里两者冲突时用户级生效,现在项目级生效。
+    2.1 版把项目级 hooks 的加载放到了用户级之后。旧版本里两者冲突时用户级生效，现在项目级生效。
 
-    升级后跑一遍 `claude doctor`,输出里会列出当前生效的 hooks 来源。
+    升级后跑一遍 `claude doctor`，输出里会列出当前生效的 hooks 来源。
     """
 )
 
@@ -41,7 +41,7 @@ ADVISORY_ITEM = {
     "excerpt": "旧版本里两者冲突时用户级生效", "count": 2, "cap": 1, "message": "否定对照/翻案:全文 2 处,上限 1",
 }
 LOG_HEADER = "| 规则 | 行 | 原文 | 处理 | 理由/出处 |\n|---|---|---|---|---|\n"
-DIGEST = "这不是一次小修,而是一次重构"
+DIGEST = "这不是一次小修，而是一次重构"
 
 
 class _ReachedApi(BaseException):

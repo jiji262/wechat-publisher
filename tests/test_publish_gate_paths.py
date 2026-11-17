@@ -19,7 +19,7 @@ import toutiao_publish as tp
 
 ZW = "\u200b"   # 零宽空格(源码里不放不可见字符)
 LOG_HEADER = "| 规则 | 行 | 原文 | 处理 | 理由/出处 |\n|---|---|---|---|---|\n"
-CONTRAST_DIGEST = "这不是一次小修,而是一次重构"
+CONTRAST_DIGEST = "这不是一次小修，而是一次重构"
 CONTRAST_MD = f"# 2.1 版本发布说明\n\n> {CONTRAST_DIGEST}\n\n## 改动\n\n2.1 版把项目级 hooks 的加载放到了用户级之后。升级后跑一遍 doctor 能看到来源。\n"
 
 
@@ -59,7 +59,7 @@ def _run_publish(monkeypatch, argv):
 
 def test_digest_from_later_quote_is_gated(tmp_path, monkeypatch, capsys, spy_score, tmp_config_yaml, no_network):
     """发布用的摘要是全文第一个引用块(这里在 H2 之后),gate 必须拿它过零容忍 lint。"""
-    md = "# 迁移记录\n\n迁移用了两周,主要时间花在核对 key 的过期策略上。\n\n## 配置\n\n> 这次升级不是修补，而是重写。\n\n配置文件改了三处。\n"
+    md = "# 迁移记录\n\n迁移用了两周，主要时间花在核对 key 的过期策略上。\n\n## 配置\n\n> 这次升级不是修补，而是重写。\n\n配置文件改了三处。\n"
     with pytest.raises(_ReachedApi):
         _run_publish(monkeypatch, ["--input", str(_write(tmp_path, md))])
     assert spy_score[0]["digest"] == publish.extract_digest_from_markdown(md) == "这次升级不是修补，而是重写。"
@@ -68,7 +68,7 @@ def test_digest_from_later_quote_is_gated(tmp_path, monkeypatch, capsys, spy_sco
 
 def test_title_fallback_without_h1_is_gated(tmp_path, monkeypatch, capsys, spy_score, tmp_config_yaml, no_network):
     """没有 H1 时发布用正文第一行当标题(不是 front matter 的 title),gate 查的也得是它。"""
-    md = "---\ntitle: Redis 7.2 迁移记录\n---\n\n真正的瓶颈其实是缓存\n\n迁移用了两周,主要时间花在核对 key 的过期策略上。\n"
+    md = "---\ntitle: Redis 7.2 迁移记录\n---\n\n真正的瓶颈其实是缓存\n\n迁移用了两周，主要时间花在核对 key 的过期策略上。\n"
     with pytest.raises(_ReachedApi):
         _run_publish(monkeypatch, ["--input", str(_write(tmp_path, md))])
     assert spy_score[0]["title"] == publish.extract_title_from_markdown(md) == "真正的瓶颈其实是缓存"
@@ -250,7 +250,7 @@ def test_publish_from_brief_card_advisory_does_not_block(tmp_path, monkeypatch, 
 
         # 短文本
 
-        2.1 版把项目级 hooks 放到用户级之后加载,冲突时项目级生效。升级后跑一遍 doctor 能看到来源。
+        2.1 版把项目级 hooks 放到用户级之后加载，冲突时项目级生效。升级后跑一遍 doctor 能看到来源。
         """), encoding="utf-8")
     (tmp_path / "images").mkdir()
     for n in ("01.png", "02.png"):

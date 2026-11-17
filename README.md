@@ -98,7 +98,7 @@ python3 scripts/publish.py --input article.md --platform toutiao
 python3 scripts/publish.py --input article.md --platform wechat,toutiao
 ```
 
-`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做发布预检(风格仅提示；同形字与出处缺口阻断)→ 本地缺图检查(引用的本地图片不存在就在上传前中止)→ 图片处理 → HTML 转换 → 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
+`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做发布预检(风格仅提示；同形字、中文里残留的半角标点与出处缺口阻断)→ 本地缺图检查(引用的本地图片不存在就在上传前中止)→ 图片处理 → HTML 转换 → 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
 
 ## 排版主题
 

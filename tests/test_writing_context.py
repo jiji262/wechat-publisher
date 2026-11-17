@@ -116,3 +116,7 @@ def test_repo_guide_has_every_section_the_writer_needs():
 def test_instructions_point_writer_at_outline_and_image_slots():
     assert "outline" in writing_context.INSTRUCTIONS
     assert "images/" in writing_context.INSTRUCTIONS
+
+
+def test_instructions_ask_for_fullwidth_punctuation():
+    assert "全角标点" in writing_context.INSTRUCTIONS
