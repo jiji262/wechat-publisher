@@ -43,7 +43,7 @@ from html_converter import (
     load_theme,
 )
 from article_meta import extract_digest_from_markdown, extract_title_from_markdown  # 标题/摘要唯一口径(E5)
-from image_handler import process_article_images, extract_images_from_markdown
+from image_handler import process_article_images, extract_images_from_markdown, missing_local_images
 
 
 # ============================================================
@@ -282,6 +282,19 @@ def _default_temp_dir() -> str:
 # 发布主流程
 # ============================================================
 
+def _abort_on_missing_local_images(content_md, base_dir):
+    """正文引用的本地图片不存在 → 逐条列出并 SystemExit(1)。"""
+    missing = missing_local_images(content_md, base_dir=base_dir)
+    if not missing:
+        return
+    print(f"\n  错误：{len(missing)} 张本地图片不存在(相对路径按 article.md 所在目录解析)：")
+    for url in missing:
+        print(f"    · {url}")
+    print("  发布已中止，尚未上传任何图片。生成这些图，或从正文删掉不需要的图片引用；\n"
+          "  确要发缺图草稿时显式传 --allow-missing-images。")
+    raise SystemExit(1)
+
+
 def publish_from_markdown(
     md_path,
     title=None,
@@ -364,6 +377,10 @@ def publish_from_markdown(
 
     print(f"标题：{title}")
     print(f"摘要：{digest[:50]}...")
+
+    # 本地缺图预检:在验证 API、上传任何图片之前中止,不浪费素材配额(未生成的图位也在这里拦下)
+    if not allow_missing_images:
+        _abort_on_missing_local_images(remove_title_from_content(md_content), md_path.parent)
 
     # 4. 验证API连接
     print("\n[步骤1] 验证API连接...")

@@ -23,7 +23,7 @@
 - **封面图**:排版卡做封面(尺寸 `1200×510` ≈ 2.35:1,或直接 4:5 竖版再裁),视觉冲击强、标题精确。
 - **贴图(newspic)卡**:代替 / 混入手绘信息图,尤其"单信息点 / 新闻 / 对比"类首卡(`1080×1350` 或 `1080×1920`)。
 - **文内插图**:需要精确数据 / 对比 / 引用的那一两张。
-- 渲染出 PNG 后,和普通配图一样走 `scripts/image_handler.py upload <png>` 上传,拿 CDN URL 替换 placeholder;
+- 文内卡和普通配图一样:PNG 存到正文图片引用指向的 `images/` 路径,`publish.py` 发布时自动上传;单独要 CDN 链接用 `scripts/image_handler.py upload <png>`;
   封面走 `publish.py --cover <png>`。
 
 ## 语法(每张卡的固定骨架)

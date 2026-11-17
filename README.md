@@ -5,8 +5,8 @@
 ## 功能
 
 - **全网素材搜索**:围绕话题多轮搜索、交叉验证,筛选最新案例与权威观点
-- **AI 写作**:材料决定篇幅和结构；通过 `writing_context.py` 将当前材料、本人样本和用户改稿反馈交给独立写作 pass。没有本人样本时明确采用账号编辑风格
-- **AI 配图**:按信息点配图(`scripts/generate_image.py` 手绘信息图,或排版卡),一篇内风格统一,支持 OpenAI / Gemini 后端
+- **AI 写作**:材料决定篇幅和结构；通过 `writing_context.py` 将当前材料、结构规划、技术文章的内容要求、本人样本和用户改稿反馈交给独立写作 pass。没有本人样本时明确采用账号编辑风格
+- **AI 配图**:初稿在需要的地方写图位,按图位配图(`scripts/generate_image.py` 手绘信息图,或排版卡),一篇内风格统一,支持 OpenAI / Gemini 后端
 - **微信排版**:Markdown → 微信兼容 HTML,样式全内联,内置 **15 套主题**,粘贴不丢样式
 - **一键发布**:封面、标题、摘要、作者自动填好,直达草稿箱
 - **去 AI 味改稿流程**:初稿快照 → `ai_score.py` 负向模式 lint(带行号的 advisory 清单)→ 按语境编辑(允许段落重组) → 全新上下文冷读 → `fidelity_check.py` 保真核对 + `fingerprint.py` 跨篇比对
@@ -98,7 +98,7 @@ python3 scripts/publish.py --input article.md --platform toutiao
 python3 scripts/publish.py --input article.md --platform wechat,toutiao
 ```
 
-`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做图片处理 → HTML 转换 → 发布预检(风格仅提示；同形字与出处缺口阻断)→ 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
+`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做发布预检(风格仅提示；同形字与出处缺口阻断)→ 本地缺图检查(引用的本地图片不存在就在上传前中止)→ 图片处理 → HTML 转换 → 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
 
 ## 排版主题
 

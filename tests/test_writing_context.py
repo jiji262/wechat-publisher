@@ -10,13 +10,15 @@ import pytest
 
 import writing_context
 
+OUTLINE = "- 失败后先看重试条件 | 夹具材料 | 时序图：失败到重试"
+
 
 @pytest.fixture
 def workspace(tmp_path):
     references = tmp_path / "references"
     references.mkdir()
     (references / "writing-guide.md").write_text(
-        "# 写作\n\n## 共用原则\n围绕读者问题组织。\n\n"
+        "# 写作\n\n## 共用原则\n围绕读者问题组织。\n\n## 技术文章\n每节推进一条论断。\n\n"
         "## main\n解释设计给读者省了哪一步。\n\n## tech\n写出复现条件。\n", encoding="utf-8"
     )
     article_dir = tmp_path / "mp-articles" / "main" / "test"
@@ -26,7 +28,7 @@ def workspace(tmp_path):
         '---\naccount: main\ntopic: 纸桥更新\nfocus: 失败后怎样继续\nstance: 推荐文字PDF\n'
         'experiences: [无]\nmaterials:\n  - "可以跳过失败项 | 夹具"\n'
         'article_structure: playbook\nopening_hook: hard-number\n---\n'
-        '## 结构规划\n不该传给独立写作者的审校批注。\n', encoding="utf-8"
+        f'## 结构规划\n{OUTLINE}\n\n## 审校记录\n不该传给独立写作者的审校批注。\n', encoding="utf-8"
     )
     return tmp_path, brief
 
@@ -84,3 +86,33 @@ def test_cli_does_not_create_voice_or_article_files(workspace):
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["account"] == "main"
     assert sorted(p.relative_to(brief.parent) for p in brief.parent.rglob("*")) == before
+
+
+def test_outline_carries_only_the_structure_plan(workspace):
+    root, brief = workspace
+    result = writing_context.build_context(brief, root=root)
+    assert result["outline"] == OUTLINE
+    assert "审校批注" not in json.dumps(result, ensure_ascii=False)
+
+
+def test_brief_without_structure_plan_still_builds(workspace):
+    root, brief = workspace
+    text = brief.read_text(encoding="utf-8")
+    brief.write_text(text[: text.index("## 结构规划")], encoding="utf-8")
+    assert writing_context.build_context(brief, root=root)["outline"] is None
+
+
+def test_technical_writing_principles_are_supplied(workspace):
+    root, brief = workspace
+    assert writing_context.build_context(brief, root=root)["technical_writing"] == "每节推进一条论断。"
+
+
+def test_repo_guide_has_every_section_the_writer_needs():
+    guide = (writing_context.ROOT / "references" / "writing-guide.md").read_text(encoding="utf-8")
+    for name in ("共用原则", "技术文章", "main", "tech"):
+        assert writing_context._section(guide, name)
+
+
+def test_instructions_point_writer_at_outline_and_image_slots():
+    assert "outline" in writing_context.INSTRUCTIONS
+    assert "images/" in writing_context.INSTRUCTIONS

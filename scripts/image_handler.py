@@ -370,20 +370,34 @@ def resolve_images_to_local(md_content, temp_dir, base_dir=None, verbose=True):
             print(f"[{i+1}/{len(images)}] 处理图片：{alt or url[:50]}")
 
         local_path = None
-        if url.startswith(("http://", "https://")):
+        if _is_remote(url):
             local_path = download_image(url, temp_dir, filename=f"article_{i}.jpg")
         else:
-            p = Path(url)
-            if not p.is_absolute() and base_dir is not None and not p.exists():
-                p = Path(base_dir) / p
-            if p.exists():
-                local_path = str(p)
-            elif verbose:
+            local_path = _local_image_path(url, base_dir)
+            if local_path is None and verbose:
                 print(f"  跳过无效路径：{url}")
 
         resolved.append((url, local_path))
 
     return resolved
+
+
+def _is_remote(url):
+    return url.startswith(("http://", "https://"))
+
+
+def _local_image_path(url, base_dir=None):
+    """本地图片引用解析成存在的文件路径;相对路径先按当前目录、再按 base_dir 找。找不到返回 None。"""
+    p = Path(url)
+    if not p.is_absolute() and base_dir is not None and not p.exists():
+        p = Path(base_dir) / p
+    return str(p) if p.exists() else None
+
+
+def missing_local_images(md_content, base_dir=None):
+    """正文引用了、但本地不存在的图片路径(去重,保持出现顺序);远程 URL 不在这里检查。"""
+    urls = dict.fromkeys(img["url"] for img in extract_images_from_markdown(md_content))
+    return [u for u in urls if not _is_remote(u) and _local_image_path(u, base_dir) is None]
 
 
 def process_article_images(md_content, temp_dir=None, base_dir=None):
