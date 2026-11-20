@@ -327,7 +327,7 @@ def publish_from_markdown(
     Args:
         md_path: Markdown文件路径
         title: 标题（可选，默认从Markdown提取）
-        author: 作者名(默认从账号配置读取,再兜底到 "飞哥")
+        author: 作者名(默认从账号配置读取,没配置则留空)
         digest: 摘要（可选，默认从Markdown提取）
         cover_path: 封面图路径（可选，默认使用文章第一张图）
         source_url: 原文链接
@@ -451,9 +451,9 @@ def publish_from_markdown(
     if author is None:
         try:
             cfg = get_config(account_name)
-            author = cfg.get("author", "") or "飞哥"
+            author = cfg.get("author", "")
         except ConfigError:
-            author = "飞哥"
+            author = ""
 
     # 9. 发布到草稿箱
     print("\n[步骤5] 发布到草稿箱...")
@@ -698,7 +698,7 @@ def publish_from_html(
         html_path: HTML文件路径
         title: 文章标题（必需）
         cover_path: 封面图路径（必需）
-        author: 作者名(默认从账号配置读取,再兜底到 "飞哥")
+        author: 作者名(默认从账号配置读取,没配置则留空)
         digest: 摘要
         source_url: 原文链接
         account_name: 若指定,则在函数内部调用 set_account() 切换账号
@@ -718,9 +718,9 @@ def publish_from_html(
     if author is None:
         try:
             cfg = get_config(account_name)
-            author = cfg.get("author", "") or "飞哥"
+            author = cfg.get("author", "")
         except ConfigError:
-            author = "飞哥"
+            author = ""
 
     result = publish_article(
         title=title,
@@ -771,7 +771,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--title", "-t", help="文章标题（默认从文章提取）")
     parser.add_argument("--cover", "-c", help="封面图路径")
     parser.add_argument("--author", "-a", default=None,
-                        help="作者名（默认从账号配置获取，兜底：飞哥）")
+                        help="作者名（默认从账号配置获取，没配置则留空）")
     parser.add_argument("--digest", "-d", help="文章摘要（默认从文章提取;手动传入的也会过 AI 味 lint）")
     parser.add_argument("--source-url", default="", help="原文链接")
     parser.add_argument("--style", help="自定义样式JSON路径")
@@ -854,11 +854,11 @@ def _resolve_config(args):
             print("--sync-from-config 需要有效的 wechat-publisher.yaml 配置。", file=sys.stderr)
             sys.exit(1)
         if args.author is None:
-            args.author = "飞哥"
+            args.author = ""
         return config_sync_platforms
 
     if args.author is None:
-        args.author = config.get("author", "") or "飞哥"
+        args.author = config.get("author", "")
     if args.theme is None:
         args.theme = config.get("theme", "") or None
     config_sync_platforms = config.get("sync_platforms") or None

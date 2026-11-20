@@ -319,7 +319,7 @@ def test_front_matter_not_rendered_into_body():
         "---\n"
         "title: 标题\n"
         "account: main\n"
-        "author: 飞哥\n"
+        "author: 老张\n"
         "theme: sunset-coral\n"
         "---\n"
         "\n"
@@ -328,7 +328,7 @@ def test_front_matter_not_rendered_into_body():
         "正文第一段。\n"
     )
     html_out = convert_markdown_to_wechat_html(md)
-    for leaked in ("title:", "account:", "author:", "theme:", "飞哥"):
+    for leaked in ("title:", "account:", "author:", "theme:", "老张"):
         assert leaked not in html_out, f"front matter 泄漏到正文: {leaked}"
     assert "正文第一段。" in html_out
 

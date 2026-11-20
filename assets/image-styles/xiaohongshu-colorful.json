@@ -37,5 +37,5 @@
     "article_inline": "Generate a vibrant Xiaohongshu-style Chinese illustration, 16:9. Warm peach-to-coral gradient background. Topic: '{image_subject}'. Use big rounded Chinese text, playful emoji or flat icons, yellow brush highlights, dashed borders. Friendly, approachable feel. No photos, no 3D, no realistic people."
   },
   "example_reference": "(参考小红书爆款笔记封面)",
-  "notes": "不建议用于技术号(tech 账号)—— 葱哥的冷吐槽风格和这个视觉完全不搭。main 号做生活向 / 入门指南 / 清单类内容适合。"
+  "notes": "不建议用于技术号(tech 账号)—— tech 账号的冷吐槽风格和这个视觉完全不搭。main 号做生活向 / 入门指南 / 清单类内容适合。"
 }

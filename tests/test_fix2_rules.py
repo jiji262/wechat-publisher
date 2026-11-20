@@ -68,7 +68,7 @@ def test_digest_hook_word_and_comma_salience():
 
 _END_MD = ("## 一\n\n第一节正文写了很多内容。\n\n慢慢来，才是最快的。\n\n## 二\n\n第二节正文也写了很多内容。\n\n"
            "简单的事情重复做，才是真的难。\n\n## 三\n\n第三节正文也写了很多。\n\n长期主义，才是唯一的捷径。\n\n"
-           "我是飞哥，一个写了二十年代码的老程序员。\n\n欢迎在评论区聊聊你的做法，我们下期见。\n")
+           "我是老张，一个写了很多年代码的老程序员。\n\n欢迎在评论区聊聊你的做法，我们下期见。\n")
 
 
 @pytest.mark.parametrize("value", ["\"，\"", "完", "是", "无", "none", "<可选,固定结尾原文>", "\"\""])
@@ -80,9 +80,9 @@ def test_series_ending_short_or_placeholder_ignored(value):
 
 
 def test_series_ending_multi_paragraph_list_and_ratio():
-    brief = "---\nseries_ending:\n  - 我是飞哥，一个写了二十年代码的老程序员。\n  - 欢迎在评论区聊聊你的做法，我们下期见。\n---\n"
+    brief = "---\nseries_ending:\n  - 我是老张，一个写了很多年代码的老程序员。\n  - 欢迎在评论区聊聊你的做法，我们下期见。\n---\n"
     assert "cta_end" not in ids(Z.lint(_END_MD, brief_text=brief))
-    joined = "---\nseries_ending: 我是飞哥，一个写了二十年代码的老程序员。欢迎在评论区聊聊你的做法，我们下期见。\n---\n"
+    joined = "---\nseries_ending: 我是老张，一个写了很多年代码的老程序员。欢迎在评论区聊聊你的做法，我们下期见。\n---\n"
     assert "cta_end" in ids(Z.lint(_END_MD, brief_text=joined))      # 一个字符串写两段:长度比 <0.6,不豁免
     escaped = joined.replace("老程序员。", "老程序员。\\n")                # 字面 \n 按段切开
     assert "cta_end" not in ids(Z.lint(_END_MD, brief_text=escaped))

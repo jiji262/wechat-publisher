@@ -430,7 +430,7 @@ wechatsync 必须做成扩展，是因为 **Chrome 扩展的 content script 跑�
 ```
 [1/6] 启动 Chrome（独立 profile）
 [2/6] CDP 已连接
-[4/6] 检查登录态          ✅ 已登录：shuaping (85164444330)
+[4/6] 检查登录态          ✅ 已登录：<账号昵称> (<账号 ID>)
 [5/6] 上传配图与封面       正文图 960x540，封面已上传
 [6/6] 写入草稿            ✅ 保存成功
       草稿链接: https://mp.toutiao.com/profile_v4/graphic/publish?pgc_id=...

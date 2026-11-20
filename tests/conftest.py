@@ -38,7 +38,7 @@ _MIN_CONFIG_YAML = textwrap.dedent(
         name: "Test Main"
         app_id: "wx_fake_main_app_id_0001"
         app_secret: "fake_main_secret"
-        author: "飞哥"
+        author: "主号作者"
         theme: "refined-blue"
         voice: "test-voice-main"
 
@@ -46,7 +46,7 @@ _MIN_CONFIG_YAML = textwrap.dedent(
         name: "Test Tech"
         app_id: "wx_fake_tech_app_id_0002"
         app_secret: "fake_tech_secret"
-        author: "葱哥"
+        author: "技术号作者"
         theme: "minimal-mono"
         voice: "test-voice-tech"
     """

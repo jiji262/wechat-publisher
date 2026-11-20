@@ -25,10 +25,10 @@ description: |
 
 | key | 公众号名 | 作者 | 主题 | 人格(voice) |
 |---|---|---|---|---|
-| `main`(默认) | 刷屏AI | **飞哥** | `refined-blue` | 热情来自具体判断和读者能用上的东西;类比只在难懂处用。面向 AI 产品 / 提示工程 / Agent / 个人生产力 |
-| `tech` | 蒜是哪根葱 | **葱哥** | `minimal-mono` | 冷静,吐槽对准具体对象,不用感叹号。面向工程实践 / SDK / CLI / 底层原理 |
+| `main`(默认) | 你的主号 | **你的署名** | `refined-blue` | 热情来自具体判断和读者能用上的东西;类比只在难懂处用。面向 AI 产品 / 提示工程 / Agent / 个人生产力 |
+| `tech` | 你的技术号 | **技术号署名** | `minimal-mono` | 冷静,吐槽对准具体对象,不用感叹号。面向工程实践 / SDK / CLI / 底层原理 |
 
-**默认作者**:不指定 `--account` 时用 `main`(飞哥 + refined-blue)。使用 `--account tech` 时自动切到葱哥 + minimal-mono 主题。
+**默认作者**:不指定 `--account` 时用 `main`(main 账号的作者 + refined-blue)。使用 `--account tech` 时自动切到 tech 账号的作者 + minimal-mono 主题。
 
 写作按当前账号 voice 的**取舍原则**来(见 references/writing-guide.md 的对应账号小节),两个号写出来要有明显差异。目标是读者读着像这个人写的,不是骗过检测器。
 
@@ -594,7 +594,7 @@ mp-articles/<main|tech>/<YYYY-MM-DD>-<slug>/
 ## 注意事项
 
 - 文章始终发布到**草稿箱**,不自动群发
-- 默认 `main` 账号(飞哥),`tech` 账号用 `--account tech` 切换
+- 默认 `main` 账号,`tech` 账号用 `--account tech` 切换
 - 两个号的写作取舍要保持差异,**不要趋同**;目标是读者读着像本人写的,不要为了检测器分数改稿
 - access_token 有效期 2 小时,脚本自动管理
 - 微信 API 频率限制:每日 100 次素材上传
