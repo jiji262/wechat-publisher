@@ -153,7 +153,7 @@ def test_cli_default_digest_kept_for_plain_paragraphs(tmp_path):
 
 def test_lint_json_has_no_cap(tmp_path):
     art = tmp_path / "article.md"
-    art.write_text("这不是还没做完,这是设计。\n\n它不是工具,而是同事。\n", encoding="utf-8")
+    art.write_text("这不是没写完,这是故意的。\n\n它不是工具,而是同事。\n", encoding="utf-8")
     _cli(str(art), "--advisory", "--save-lint")
     lint = json.loads((tmp_path / "ai_lint.json").read_text(encoding="utf-8"))
     assert lint["advisory"] and not any("cap" in a for a in lint["advisory"])

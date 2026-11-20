@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """保真核对(PR-05 + critic):初稿 vs 终稿,以及终稿数字/引语对 research.md、brief.md 的溯源。只出提示,永远 exit 0。
 
-① 数字 / 反引号 / 拉丁专名 / 引号内文本四类集合在初稿与终稿间的增删(数字按数值比,2,768,000,000 与 27.68 亿相同);
+① 数字 / 反引号 / 拉丁专名 / 引号内文本四类集合在初稿与终稿间的增删(数字按数值比,3,416,000,000 与 34.16 亿相同);
 ② 终稿数字与引语在 research/brief 里找不到的(千分位、万/亿/k/M/B、% 归一;终稿可以是材料数字的四舍五入;
    引语只查有归属的直接引语和够长的引文,给概念打的短引号不查);
 ③ 段落字符变化提醒；④ 总长度和段落数变化提醒（不要求补字）；⑤ 新增的第一人称亲历句。
@@ -32,7 +32,7 @@ PARA_DELTA_MAX = 0.3         # 段落数变化超过 30%
 REWRITE_MAX = 0.7            # 单段变化提醒阈值，不是改写许可上限
 REWRITE_MIN_HAN = 20         # 短段改几个字改写率就很高,不比
 SMALL_INT_MAX = 10           # ≤10 的裸整数多是序数/结构计数,不做溯源
-ROUND_INT_DIGITS, ROUND_INT_ZEROS = 4, 3   # ≥4 位且末尾 ≥3 个 0 的整数视为约数(3000 可对上 2,987)
+ROUND_INT_DIGITS, ROUND_INT_ZEROS = 4, 3   # ≥4 位且末尾 ≥3 个 0 的整数视为约数(9000 可对上 8,974)
 QUOTE_MIN_CHARS = 20         # 无归属的引号去标点空白后 ≥20 字才当引文溯源;更短的多是给概念打的引号
 EXCERPT_MAX, RATE_DIGITS = 40, 2
 MUL = {"万亿": 10 ** 12, "亿": 10 ** 8, "万": 10 ** 4, "千": 10 ** 3, "k": 10 ** 3, "K": 10 ** 3,
@@ -44,10 +44,10 @@ _A = r"A-Za-z0-9_"
 VERSION_RE = re.compile(rf"(?<![{_A}.\-/])\d+(?:\.\d+){{2,}}(?![{_A}.])")
 _NUM = (r"(?P<int>\d{1,3}(?:,\d{3})+|\d+)(?:\.(?P<frac>\d+))?(?:[ \t]*(?P<mul>万亿|亿|万|千)|(?P<en>[kKmMbB])(?![A-Za-z]))?")
 _PCT = r"(?:[ \t]*(?P<pct>[%％]))?"
-# 终稿侧:前面不能贴着字母/数字/点(排除 hash、GPT-4);后面的字母只允许纯单位(793MB),不允许再接数字(019fe48f)
+# 终稿侧:前面不能贴着字母/数字/点(排除 hash、GPT-4);后面的字母只允许纯单位(518MB),不允许再接数字(03ab7c2e)
 NUM_STRICT = re.compile(rf"(?<![{_A}./])(?<![{_A}]-)" + _NUM + r"(?![A-Za-z_]*\d)" + _PCT)
 NUM_LOOSE = re.compile(r"(?<![\d.])(?<!\d,)" + _NUM + _PCT)   # 材料侧从宽:时间戳、-28%、v0.1.11 里的数字都算
-_DIGIT_RUN = re.compile(rf"(?<![{_A}.\-/])\d+(?:[-/]\d+)+(?![{_A}])")   # 纯数字的 2026-08-18、1-3 拆成独立数字
+_DIGIT_RUN = re.compile(rf"(?<![{_A}.\-/])\d+(?:[-/]\d+)+(?![{_A}])")   # 纯数字的 2025-03-12、1-3 拆成独立数字
 INLINE_CODE = re.compile(r"`([^`\n]+)`")
 LATIN = re.compile(r"(?<![A-Za-z0-9_])[A-Za-z][A-Za-z0-9]*(?:[-.+][A-Za-z0-9]+)*")
 _SCRUB = re.compile(r"(?:https?|ftp)://[^\s)）\u3002\uff0c\uff1b\uff01\uff1f\u3001]+|\]\([^)\n]*\)")   # URL 不吞紧跟的全角标点,否则句数对不上
@@ -84,7 +84,7 @@ def _public(d: dict) -> dict:
     return {k: v for k, v in d.items() if not k.startswith("_") and k not in ("pos", "small", "key")}
 
 def unsourced_numbers(nums: list[dict], source: str) -> list[dict]:
-    """终稿数字在材料里找不到的;终稿写成约数时允许材料更精确(27.8 亿 ← 2,776,100,000)。"""
+    """终稿数字在材料里找不到的;终稿写成约数时允许材料更精确(34.3 亿 ← 3,426,300,000)。"""
     src = [s for s in parse_numbers(source, loose=True) if s["value"] is not None]
     out, seen = [], set()
     for n in (n for n in nums if not n["small"] and n["key"] not in seen):

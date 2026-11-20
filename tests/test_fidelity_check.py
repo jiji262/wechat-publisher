@@ -14,55 +14,55 @@ def _vals(text):
 
 # ---------- 数字归一 ----------
 def test_parse_numbers_normalization():
-    assert _vals("输入 2,768,000,000 token") == [(2768000000, False)]
-    assert _vals("27.8 亿") == [(2.78e9, False)]
-    assert _vals("输出 810 万") == [(8.1e6, False)]
-    assert _vals("中位 83k，总计 2,768M") == [(83000, False), (2.768e9, False)]
-    assert _vals("命中率 98.3%") == [(98.3, True)]
-    assert _vals("文件 793MB") == [(793, False)]
+    assert _vals("输入 3,416,000,000 token") == [(3416000000, False)]
+    assert _vals("34.2 亿") == [(3.42e9, False)]
+    assert _vals("输出 640 万") == [(6.4e6, False)]
+    assert _vals("中位 47k，总计 3,416M") == [(47000, False), (3.416e9, False)]
+    assert _vals("命中率 96.4%") == [(96.4, True)]
+    assert _vals("文件 518MB") == [(518, False)]
 
 
 def test_parse_numbers_skips_hashes_and_keeps_versions():
-    assert _vals("session `019fe48f-7609-7423`") == []
+    assert _vals("session `03ab7c2e-5814-2096`") == []
     nums = FC.parse_numbers("发了 0.1.11 版本")
     assert [n["raw"] for n in nums] == ["0.1.11"] and nums[0]["value"] is None
 
 
 def test_sourcing_allows_rounding_only_from_more_precise_source():
-    src = "总输入 2,768,000,000 token,另一处写 2,776,100,000"
-    found = FC.unsourced_numbers(FC.parse_numbers("27.7 亿和 27.8 亿,还有 2,768M"), src)
+    src = "总输入 3,416,000,000 token,另一处写 3,426,300,000"
+    found = FC.unsourced_numbers(FC.parse_numbers("34.2 亿和 34.3 亿,还有 3,416M"), src)
     assert found == []
-    assert [n["raw"] for n in FC.unsourced_numbers(FC.parse_numbers("约 28.1 亿"), src)] == ["28.1 亿"]
+    assert [n["raw"] for n in FC.unsourced_numbers(FC.parse_numbers("约 34.9 亿"), src)] == ["34.9 亿"]
 
 
 def test_source_side_reads_dates_timestamps_and_signs():
-    src = "v0.1.11  2026-08-18T14:22:55Z;中位墙钟时间 **-28%**"
-    found = FC.unsourced_numbers(FC.parse_numbers("8 月 18 日发了 0.1.11,时间降了 28%,还有 2026-08-27"), src)
-    assert [n["raw"] for n in found] == ["27"]
-    assert FC.unsourced_numbers(FC.parse_numbers("有 339 次"), "871/1431 次超 150k,339 次超 200k") == []
+    src = "v0.4.7  2025-03-12T09:41:37Z;中位墙钟时间 **-31%**"
+    found = FC.unsourced_numbers(FC.parse_numbers("3 月 12 日发了 0.4.7,时间降了 31%,还有 2025-03-26"), src)
+    assert [n["raw"] for n in found] == ["26"]
+    assert FC.unsourced_numbers(FC.parse_numbers("有 247 次"), "613/2058 次超 120k,247 次超 180k") == []
 
 
 def test_small_ints_exempt_and_percent_needs_percent():
-    src = "184 个子代理里有 92 个 worker"
-    found = FC.unsourced_numbers(FC.parse_numbers("3 个坑,占 92%,比例 644:1"), src)
-    assert [n["raw"] for n in found] == ["92%", "644"]
+    src = "156 个请求里有 73 个重试"
+    found = FC.unsourced_numbers(FC.parse_numbers("3 个坑,占 73%,比例 418:1"), src)
+    assert [n["raw"] for n in found] == ["73%", "418"]
 
 
 # ---------- 引语溯源 ----------
 def test_unsourced_quotes():
-    src = "Almeida:\"我们早期押注自己造全部数据,这是我这辈子最好的一次押注 —— 比 launch 好\""
-    final = "他说“这是我这辈子最好的一次押注”。还有人说“模型不会说谎”。"
+    src = "Lindqvist:\"我们一开始就决定零件全部自己做,这是公司做过最对的一个决定 —— 比融资还对\""
+    final = "他说“这是公司做过最对的一个决定”。还有人说“模型不会说谎”。"
     found = FC.unsourced_quotes(FC.quotes(final), src)
     assert [q["text"] for q in found] == ["模型不会说谎"]
 
 
 def test_short_unattributed_scare_quotes_not_traced():
     """给概念打的短引号不溯源;有归属的直接引语、够长的无归属引文照查(第二轮审查 Minor 2)。"""
-    final = ("Anthropic 选了“不惊动任何人”这条路。这是“策略”不是“配置”。\n"
-             "维护者回复说“先用 symlink 绕一下”。\n"
-             "回复内容是“你可以用 import 或者 symlink 绕一下，下个版本再看”。\n")
+    final = ("Mozilla 选了“谁都不得罪”这条路。这是“策略”不是“配置”。\n"
+             "维护者回复说“先用环境变量顶一下”。\n"
+             "回复内容是“你可以先用环境变量或者配置文件顶一下，下个版本再看”。\n")
     found = FC.unsourced_quotes(FC.quotes(final), "无关材料")
-    assert [q["text"] for q in found] == ["先用 symlink 绕一下", "你可以用 import 或者 symlink 绕一下，下个版本再看"]
+    assert [q["text"] for q in found] == ["先用环境变量顶一下", "你可以先用环境变量或者配置文件顶一下，下个版本再看"]
 
 
 def test_quote_with_link_in_same_sentence_is_traced():
@@ -94,8 +94,8 @@ def test_quote_spans_called_per_paragraph(monkeypatch):
 
 
 def test_cli_hint_points_at_log_end(tmp_path, capsys):
-    (tmp_path / "article.md").write_text("一共 4,242 次。\n", encoding="utf-8")
-    (tmp_path / "research.md").write_text("总请求 19,881 次。\n", encoding="utf-8")
+    (tmp_path / "article.md").write_text("一共 5,317 次。\n", encoding="utf-8")
+    (tmp_path / "research.md").write_text("总请求 26,904 次。\n", encoding="utf-8")
     FC.main([str(tmp_path / "nope.md"), str(tmp_path / "article.md")])
     out = capsys.readouterr().out
     assert "在 humanize_log.md 末尾记一句处理结论" in out and "3.5d" not in out
@@ -119,18 +119,18 @@ def test_diff_sets():
 
 
 def test_numbers_same_value_not_reported():
-    d = FC.check("一共 2,768,000,000 次。\n", "一共 27.68 亿次。\n")["diff"]
+    d = FC.check("一共 3,416,000,000 次。\n", "一共 34.16 亿次。\n")["diff"]
     assert d["numbers"] == {"removed": [], "added": []}
 
 
 # ---------- 改写率 / 缩水 / 段落数 ----------
-P1 = "主线程一共发了一千四百多次请求，占总量的百分之八左右，剩下的全是子代理在重复背诵同一段上下文。"
-P2 = "缓存命中率很高，所以这些输入大部分是重发而不是新算，账单才会看起来这么夸张又这么便宜。"
+P1 = "前台一共接了一千二百多个电话，占总量的百分之六左右，剩下的全是自动外呼在重复播放同一段录音。"
+P2 = "录音文件都存在本地，所以这些外呼大部分是重放而不是新录，话费单才会看起来这么夸张又这么便宜。"
 
 
 def test_rewrite_flagged_only_for_heavy_rewrite():
     light = P1.replace("左右", "上下")
-    heavy = "说到底，这个故事讲的是一个工具在不知不觉中替你做了决定，而你直到看到账单那天才意识到问题所在。"
+    heavy = "说到底，这件事讲的是一套系统在不知不觉中替你做了选择，而你直到月底对账那天才发现哪里不对。"
     res = FC.check(f"{P1}\n\n{P2}\n", f"{light}\n\n{heavy}\n")
     assert len(res["rewrites"]) == 1 and res["rewrites"][0]["line"] == 3
     assert res["rewrites"][0]["rate"] > FC.REWRITE_MAX
@@ -161,17 +161,17 @@ def test_new_experience_sentence_listed_unless_in_brief():
 # ---------- CLI ----------
 def test_cli_autodetects_sources_and_exits_0(tmp_path, capsys):
     (tmp_path / "article.draft.md").write_text(f"{P1}\n", encoding="utf-8")
-    (tmp_path / "article.md").write_text("一共 19,881 次请求，另有 4,242 次。\n", encoding="utf-8")
-    (tmp_path / "research.md").write_text("总请求 19,881 次。\n", encoding="utf-8")
+    (tmp_path / "article.md").write_text("一共 26,904 次请求，另有 5,317 次。\n", encoding="utf-8")
+    (tmp_path / "research.md").write_text("总请求 26,904 次。\n", encoding="utf-8")
     code = FC.main([str(tmp_path / "article.draft.md"), str(tmp_path / "article.md"), "--json"])
     out = json.loads(capsys.readouterr().out)
     assert code == 0
     assert any(s.endswith("research.md") for s in out["sources"])
-    assert [n["raw"] for n in out["unsourced"]["numbers"]] == ["4,242"]
+    assert [n["raw"] for n in out["unsourced"]["numbers"]] == ["5,317"]
 
 
 def test_cli_missing_draft_still_checks_sources(tmp_path, capsys):
-    (tmp_path / "article.md").write_text("一共 4,242 次。\n", encoding="utf-8")
+    (tmp_path / "article.md").write_text("一共 5,317 次。\n", encoding="utf-8")
     code = FC.main([str(tmp_path / "nope.md"), str(tmp_path / "article.md")])
     out = capsys.readouterr().out
     assert code == 0 and "初稿" in out
@@ -183,7 +183,7 @@ def test_cli_missing_final_exit0(tmp_path, capsys):
 
 def test_cli_reports_missing_explicit_research(tmp_path, capsys):
     """显式传的 --research 不存在:说出来,不静默跳过(放错目录时最常见)。"""
-    (tmp_path / "article.md").write_text("一共 4,242 次。\n", encoding="utf-8")
+    (tmp_path / "article.md").write_text("一共 5,317 次。\n", encoding="utf-8")
     missing = tmp_path / "other" / "research.md"
     assert FC.main([str(tmp_path / "a.md"), str(tmp_path / "article.md"), "--research", str(missing)]) == 0
     assert f"指定的溯源材料不存在:{missing}" in capsys.readouterr().out

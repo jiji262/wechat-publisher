@@ -30,9 +30,7 @@ NEGATIVE_LINE = re.compile(r"^\s*(?:[-|]\s*)?✗")
 
 # 已知、尚未修复的命中(文件不在本轮任何改动范围内)。修好后删掉对应条目即可;
 # 守卫只拦"新增",不因这里的条目被修掉而失败。
-KNOWN = {
-    ("assets/theme-previews/sample.md", "说实话"),   # 主题预览样稿,待改写
-}
+KNOWN: set[tuple[str, str]] = set()
 
 
 def _guarded_files() -> list[Path]:

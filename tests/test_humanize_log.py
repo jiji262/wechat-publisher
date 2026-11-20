@@ -9,11 +9,11 @@ import pytest
 import humanize_log as HL
 
 ADV = [
-    {"id": "neg_contrast", "label": "否定对照/翻案", "line": 32, "kind": "para", "excerpt": "这不是还没做完,这是设计。",
+    {"id": "neg_contrast", "label": "否定对照/翻案", "line": 32, "kind": "para", "excerpt": "这不是没写完,这是故意的。",
      "count": 3, "cap": 1, "scope": "density", "message": "否定对照/翻案:全文 3 处"},
     {"id": "neg_contrast", "label": "否定对照/翻案", "line": 40, "kind": "para", "excerpt": "它不是工具,而是同事。",
      "count": 3, "cap": 1, "scope": "density", "message": "否定对照/翻案:全文 3 处"},
-    {"id": "fake_reaction", "label": "编造的反应", "line": 24, "kind": "para", "excerpt": "这个开头我看了三遍。",
+    {"id": "fake_reaction", "label": "编造的反应", "line": 24, "kind": "para", "excerpt": "这张报表我翻了四遍。",
      "count": 1, "cap": 0, "scope": "position", "message": "编造的反应"},
 ]
 REASON = "引用 brief 第 3 行原话"
@@ -32,7 +32,7 @@ def test_template_one_row_per_density_rule_and_per_position_hit():
     assert "| 规则 | 行 | 原文 | 处理 | 理由/出处 |" in text and "上限" not in text
     rows = HL.parse_log(text)
     assert [(r["id"], r["line"], r["excerpt"]) for r in rows] == [
-        ("neg_contrast", "全文 3 处", "*"), ("fake_reaction", "24", "这个开头我看了三遍。")]
+        ("neg_contrast", "全文 3 处", "*"), ("fake_reaction", "24", "这张报表我翻了四遍。")]
     assert all(r["action"] == "" and r["reason"] == "" for r in rows)
 
 
@@ -48,20 +48,20 @@ def test_uncovered_without_log_returns_all():
 @pytest.mark.parametrize("density_excerpt", ["*", "它不是工具, 而是同事"])
 def test_one_density_row_covers_rule(density_excerpt):
     log = _log([("neg_contrast", "全文 3 处", density_excerpt, "保留", REASON),
-                ("fake_reaction", 24, "这个开头我看了 三遍。", "保留", "brief experiences 第 1 条")])
+                ("fake_reaction", 24, "这张报表我翻了 四遍。", "保留", "brief experiences 第 1 条")])
     assert HL.uncovered(ADV, log) == []
 
 
 @pytest.mark.parametrize("row", [
     ("fake_reaction", 24, "遍", "保留", REASON),                       # 单字原文糊弄
-    ("fake_reaction", 24, "这个开头我看了三遍。", "不保留", REASON),
-    ("fake_reaction", 24, "这个开头我看了三遍。", "未保留", REASON),
-    ("fake_reaction", 24, "这个开头我看了三遍。", "改", REASON),          # 删/改了但 lint 仍报 → 未覆盖
-    ("fake_reaction", 24, "这个开头我看了三遍。", "保留", "-"),
-    ("fake_reaction", 24, "这个开头我看了三遍。", "保留", "无"),
-    ("fake_reaction", 24, "这个开头我看了三遍。", "保留", "N/A N/A"),
-    ("fake_reaction", 24, "这个开头我看了三遍。", "保留", "有出处"),     # 理由太短
-    ("salience", 24, "这个开头我看了三遍。", "保留", REASON),            # id 不对
+    ("fake_reaction", 24, "这张报表我翻了四遍。", "不保留", REASON),
+    ("fake_reaction", 24, "这张报表我翻了四遍。", "未保留", REASON),
+    ("fake_reaction", 24, "这张报表我翻了四遍。", "改", REASON),          # 删/改了但 lint 仍报 → 未覆盖
+    ("fake_reaction", 24, "这张报表我翻了四遍。", "保留", "-"),
+    ("fake_reaction", 24, "这张报表我翻了四遍。", "保留", "无"),
+    ("fake_reaction", 24, "这张报表我翻了四遍。", "保留", "N/A N/A"),
+    ("fake_reaction", 24, "这张报表我翻了四遍。", "保留", "有出处"),     # 理由太短
+    ("salience", 24, "这张报表我翻了四遍。", "保留", REASON),            # id 不对
 ])
 def test_position_row_cannot_be_gamed(row):
     assert _gap_ids([ADV[2]], _log([row])) == ["fake_reaction"]
@@ -95,7 +95,7 @@ def test_duplicate_hits_need_one_row_each():
     hits = [{**ADV[2], "line": 3}, {**ADV[2], "line": 9}]
     one = _log([("fake_reaction", 3, ADV[2]["excerpt"], "保留", REASON)])
     assert _gap_ids(hits, one) == ["fake_reaction"]
-    assert _gap_ids(hits, one + "| fake_reaction | 9 | 这个开头我看了三遍。 | 保留 | 引用 brief 第 4 行原话 |\n") == []
+    assert _gap_ids(hits, one + "| fake_reaction | 9 | 这张报表我翻了四遍。 | 保留 | 引用 brief 第 4 行原话 |\n") == []
 
 
 def test_greedy_prefers_closest_row():
@@ -104,11 +104,11 @@ def test_greedy_prefers_closest_row():
     assert _gap_ids(hits, log) == []
 
 
-UNSOURCED = {**ADV[2], "id": "unsourced_experience", "excerpt": "我上周数了一遍自己的调用日志。"}
-QUOTE = {**ADV[2], "id": "unsourced_quote", "excerpt": "同事说调用日志里全是重复请求"}
-BRIEF = ('---\ntopic: x\nexperiences:\n  - "上周 | 数了一遍自己的调用日志 | 发现重复请求"\n'
-         'materials:\n  - "调用日志里的重复请求 | logs/2026-08.jsonl"\n---\n')
-RESEARCH = "## 访谈\n同事说调用日志里全是重复请求,一天上千条。\n"
+UNSOURCED = {**ADV[2], "id": "unsourced_experience", "excerpt": "我上周翻了一遍自己的浏览器书签。"}
+QUOTE = {**ADV[2], "id": "unsourced_quote", "excerpt": "同事说浏览器书签里全是失效链接"}
+BRIEF = ('---\ntopic: x\nexperiences:\n  - "上周 | 翻了一遍自己的浏览器书签 | 发现失效链接"\n'
+         'materials:\n  - "浏览器书签里的失效链接 | exports/bookmarks-03.html"\n---\n')
+RESEARCH = "## 访谈\n同事说浏览器书签里全是失效链接,一共上千条。\n"
 
 
 def _covered(item, reason, **ctx):
@@ -122,7 +122,7 @@ def _covered(item, reason, **ctx):
     ("brief L2 用户提供", False),            # 指向 topic 行,和命中对不上
     ("brief L12 用户提供", False),           # 行号越界
     ("https://example.com/post 原文", False),  # 链接证明不了是用户亲历
-    ("research.md 里的访谈记录", False), ("issue #6235 的讨论", False), ("@someone 在推上说的", False),
+    ("research.md 里的访谈记录", False), ("issue #4817 的讨论", False), ("@someone 在推上说的", False),
 ])
 def test_unsourced_experience_keep_needs_matching_brief_line(reason, ok):
     """亲历只认 brief:指向的行 / experiences 条目必须存在且和命中原文对得上。"""
@@ -134,7 +134,7 @@ def test_unsourced_experience_brief_reason_fails_without_brief():
 
 
 @pytest.mark.parametrize("reason,ok", [
-    ("https://example.com/post 原文", True), ("issue #6235 的讨论", True), ("@someone 在推上说的", True),
+    ("https://example.com/post 原文", True), ("issue #4817 的讨论", True), ("@someone 在推上说的", True),
     ("research.md 里的访谈记录", True), ("brief materials 第 1 条", True), ("同事私下说的", False),
 ])
 def test_unsourced_quote_keep_sources(reason, ok):
@@ -161,10 +161,10 @@ def test_merge_template_appends_only_new_rows():
 # ---------- brief ----------
 
 def test_parse_brief_front_matter_and_section():
-    brief = ("---\ntopic: x\nexperiences:\n  - 上周数了一遍调用日志\n  - 无\ndialogue: true\n---\n\n"
-             "## 一手真实细节\n\n- 账单 27.8 亿 token\n\n## 结构规划\n\n- 开篇\n")
+    brief = ("---\ntopic: x\nexperiences:\n  - 上周翻了一遍浏览器书签\n  - 无\ndialogue: true\n---\n\n"
+             "## 一手真实细节\n\n- 一晚扫描 41.6 万 file\n\n## 结构规划\n\n- 开篇\n")
     b = HL.parse_brief(brief)
-    assert b["experiences"] == ["上周数了一遍调用日志", "账单 27.8 亿 token"]
+    assert b["experiences"] == ["上周翻了一遍浏览器书签", "一晚扫描 41.6 万 file"]
     assert b["dialogue"] is True and b["faq"] is False
     assert HL.parse_brief(None) == {"experiences": [], "dialogue": False, "faq": False, "endings": []}
 
@@ -192,7 +192,7 @@ def test_parse_brief_series_ending():
 
 
 def test_covered_requires_shared_tokens():
-    lines = ["上周数了一遍自己的调用日志,184 个子代理"]
-    assert HL.covered("我上周数了一遍自己的调用日志。", lines)
+    lines = ["上周翻了一遍自己的浏览器书签,316 个文件夹"]
+    assert HL.covered("我上周翻了一遍自己的浏览器书签。", lines)
     assert not HL.covered("我去年在一家创业公司做过推荐系统。", lines)
     assert not HL.covered("任何句子", [])

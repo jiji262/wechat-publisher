@@ -1,7 +1,7 @@
 """zh_text / zh_tells:切句、mask、文本单元、advisory 规则正反例、artifacts、对抗字符硬门。
 
-正例取自 .work/detector-specs.md 的修订规格与 tests/fixtures/claude_tells.md(本 skill 存量稿摘句),
-反例取自 detector-specs 的反例与人工核对出的误报句。不读取 mp-articles。
+正例取自 .work/detector-specs.md 的修订规格与 tests/fixtures/claude_tells.md(虚构的合成样本),
+反例取自 detector-specs 的反例与人工核对出的误报句。
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def ids(items):
     ("真的?!不会吧。", 2),
     ("“好的。”然后走了。", 2),
     ("等等……然后呢？", 1),
-    ("版本 2.1.277 不切。", 1),
+    ("版本 3.4.105 不切。", 1),
     ("第一行\n第二行", 2),
 ])
 def test_split_sentences_fullwidth_and_newline(text, expected):
@@ -65,7 +65,7 @@ def test_mask_keeps_length_and_lines():
     masked = T.mask_markdown(md)
     assert len(masked) == len(T.normalize(md))
     assert masked.count("\n") == T.normalize(md).count("\n")
-    assert "2,768,000,000" not in masked and "x = 1" not in masked and "未闭合" not in masked
+    assert "1,437,500,000" not in masked and "x = 1" not in masked and "未闭合" not in masked
 
 
 def test_url_masked_without_eating_text():
@@ -154,28 +154,28 @@ def test_human_fixture_has_only_provenance_checks():
 
 def test_under_cap_body_hit_not_listed_but_zero_tolerance_positions_are():
     body = "这是一段很普通的正文。" * 200
-    assert "neg_contrast" not in ids(Z.lint(body + "\n\n这不是还没做完,这是设计。\n"))
+    assert "neg_contrast" not in ids(Z.lint(body + "\n\n这不是没写完,这是故意的。\n"))
     items = Z.lint(body, title="这不是一次升级,而是一次范式转移", digest="真正值得关注的不是速度,是它的价格")
     assert {("neg_contrast", "title"), ("neg_contrast", "digest"), ("salience", "digest")} <= {(i["id"], i["kind"]) for i in items}
 
 
 def test_over_cap_lists_all_hits():
-    items = [i for i in Z.lint("这不是还没做完,这是设计。\n\n它不是工具,而是同事。\n") if i["id"] == "neg_contrast"]
+    items = [i for i in Z.lint("这不是没写完,这是故意的。\n\n它不是工具,而是同事。\n") if i["id"] == "neg_contrast"]
     assert len(items) == 2 and items[0]["count"] == 2 and items[0]["cap"] == 1
 
 
 def test_caption_zero_tolerance():
-    assert "neg_contrast" in ids(Z.lint("正文。\n\n![压缩是投影不是变更](a.png)\n"))
+    assert "neg_contrast" in ids(Z.lint("正文。\n\n![缓存是副本不是源头](a.png)\n"))
     assert "aphorism_end" in ids(Z.lint("正文。\n\n![核心结论](a.png)\n"))
-    assert not Z.lint("正文。\n\n![主线程与子代理的消耗对比](a.png)\n")
+    assert not Z.lint("正文。\n\n![冷启动与热缓存的耗时对比](a.png)\n")
 
 
 def test_scope_and_message_hide_cap():
-    items = Z.lint("这不是还没做完,这是设计。\n\n它不是工具,而是同事。\n", title="这不是升级,而是范式转移")
+    items = Z.lint("这不是没写完,这是故意的。\n\n它不是工具,而是同事。\n", title="这不是升级,而是范式转移")
     scope = {(i["kind"], i["scope"]) for i in items if i["id"] == "neg_contrast"}
     assert scope == {("title", "position"), ("para", "density")}
     assert all("上限" not in i["message"] and str(i["cap"]) not in i["message"].split("全文")[0] for i in items)
-    assert {i["scope"] for i in Z.lint("这个开头我看了三遍。\n")} == {"position"}   # cap=0 规则逐条
+    assert {i["scope"] for i in Z.lint("这张报表我翻了四遍。\n")} == {"position"}   # cap=0 规则逐条
 
 
 def test_caption_hits_not_counted_for_section_end():
@@ -183,13 +183,13 @@ def test_caption_hits_not_counted_for_section_end():
     assert [i["kind"] for i in Z.lint(md) if i["id"] == "aphorism_end"] == ["caption"]
 
 
-@pytest.mark.parametrize("last", ["代码会变，判断不会。", "真正的护城河，从来都是判断力。"])
+@pytest.mark.parametrize("last", ["工具会换，规矩不会。", "真正的护城河，从来都是判断力。"])
 def test_real_aphorism_at_article_end_forced(last):
     assert "aphorism_end" in ids(Z.lint(f"## 一\n\n第一节正文有具体内容。\n\n{last}\n"))
 
 
 def test_section_end_skips_link_line():
-    md = "".join(f"## {i}\n\n正文 {i} 写了一些东西。\n\n同一个坑，两拨人各自摔一遍。\n\n🔗 GitHub:https://x.y/{i}\n\n" for i in "一二三")
+    md = "".join(f"## {i}\n\n正文 {i} 写了一些东西。\n\n同一扇门，两拨人各自撞一次。\n\n🔗 GitHub:https://x.y/{i}\n\n" for i in "一二三")
     assert len(Z.scan(md)[0]["aphorism_end"]) == 3
 
 
@@ -201,16 +201,16 @@ def test_series_ending_exempt():
 
 
 def test_brief_outline_lines_linted():
-    brief = "---\ntopic: x\n---\n\n## 结构规划\n\n1. 开篇:甩数字 + 这不是估算是日志实测\n2. 账单长什么样\n"
+    brief = "---\ntopic: x\n---\n\n## 结构规划\n\n1. 开篇:亮报表 + 这不是猜测是构建实录\n2. 报表长什么样\n"
     got = {(i["id"], i["kind"], i["line"]) for i in Z.lint("正文。\n", brief_text=brief)}
     assert {("functional_heading", "brief", 7), ("neg_contrast", "brief", 7)} <= got
     assert not [g for g in got if g[2] == 8]
 
 
 def test_number_only_paragraph_always_listed():
-    items = Z.lint("这是一个 session 的输入 token。\n\n`2,768,000,000`。\n")
+    items = Z.lint("这是一个 runner 池的缓存查询数。\n\n`1,437,500,000`。\n")
     assert [i["id"] for i in items] == ["empty_short_para"]
-    assert not Z.lint("输入输出比 `644:1`。\n")
+    assert not Z.lint("下载编译比 `37:1`。\n")
     assert [i["id"] for i in Z.lint("正文有 3 件事。\n\n100\n")] == ["empty_short_para"]   # 3 位以上不算章节序号
 
 
@@ -221,9 +221,9 @@ def test_account_banned_tic():
 
 
 def test_brief_experiences_exempt_first_person():
-    text = "我上周数了一遍自己的调用日志,一共 184 个子代理。\n"
+    text = "我上周数了一遍自己的构建记录,一共 317 条流水线。\n"
     assert Z.lint(text)[0]["message"].startswith("待核对")
-    brief = "---\nexperiences:\n  - 上周数了一遍自己的调用日志,184 个子代理\n---\n"
+    brief = "---\nexperiences:\n  - 上周数了一遍自己的构建记录,317 条流水线\n---\n"
     assert "unsourced_experience" not in ids(Z.lint(text, brief_text=brief))
     other = "---\nexperiences:\n  - 去年在一家创业公司做过推荐系统\n---\n"
     assert "unsourced_experience" in ids(Z.lint(text, brief_text=other))
@@ -239,13 +239,13 @@ def test_attributed_quote_exempt_and_scare_quote_removed():
 def test_dash_overuse_density():
     heavy = "".join(f"第{i}段话——补一句。\n\n" for i in range(8))
     assert "dash_overuse" in ids(Z.lint(heavy))
-    assert "dash_overuse" not in ids(Z.lint("日志——确切说是 rollout 文件——在 sessions 下。\n"))
+    assert "dash_overuse" not in ids(Z.lint("缓存——确切说是 layer 文件——在 buildkit 下。\n"))
 
 
 def test_highlight_sentence_and_heading_marker():
     dense = "".join(f"第 {i} 段。**这一整句都是加粗的结论句。**\n\n" for i in range(6))
     assert "highlight_sentence" in ids(Z.lint(dense))
-    assert "highlight_sentence" in ids(Z.lint("## 场景:用 @@HyperFrames@@\n\n正文。\n"))
+    assert "highlight_sentence" in ids(Z.lint("## 场景:用 @@BuildKit@@\n\n正文。\n"))
 
 
 # ---------- artifacts / 对抗字符 ----------
@@ -261,7 +261,7 @@ def test_zero_width_is_artifact_not_hard():
 
 
 def test_artifacts_hits():
-    md = "## 写在最后\n\n## 开篇:你是不是也以为\n\n忘记判断 end_turn,这破玩意会一直烧 token。\n\n`4667` —— 这是点赞数。\n"
+    md = "## 写在最后\n\n## 开篇:你是不是也以为\n\n忘记设超时,这破玩意会一直占着 runner。\n\n`5213` —— 这是排队次数。\n"
     score, detail = Z.score_artifacts(md)
     found = {h["id"] for h in detail["hits"]}
     assert {"functional_heading", "functional_heading_bare", "instruction_echo", "spaced_dash"} <= found
@@ -269,8 +269,8 @@ def test_artifacts_hits():
 
 
 @pytest.mark.parametrize("md", [
-    "## 最后一个坑:Windows 上 symlink 失效\n", "## 为什么我又把 symlink 放回去了\n",
-    "日志——确切说是 rollout 文件——在 ~/.codex/sessions 下。\n", "版本 2.1.277,发布于 9 月 18 日。\n",
+    "## 最后一个坑:Windows 上路径大小写\n", "## 为什么我又把缓存加回去了\n",
+    "缓存——确切说是 layer 文件——在 ~/.cache/buildkit 下。\n", "版本 3.4.105,发布于 4 月 22 日。\n",
     "国际社会高度关注我国在气候问题上的立场。\n", "我跟你说过多少次了,别在生产环境调试。\n", "> —— 鲁迅《故乡》\n",
 ])
 def test_artifacts_negative(md):

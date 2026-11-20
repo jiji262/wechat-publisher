@@ -41,7 +41,7 @@ if not hasattr(ai_score, "check_ai_score"):
 # 旧 HUMAN_SAMPLE 是用旧清单套路拼的("这破玩意""我自己都怀疑我在扯淡""回到主题"),断言它 PASS 等于保护 AI 指纹。
 _FIXTURES = Path(__file__).parent / "fixtures"
 HUMAN_SAMPLE = (_FIXTURES / "human_public_domain.md").read_text(encoding="utf-8")
-# Claude 腔负样本:本 skill 存量稿摘句拼成的文章(出处逐段注明)
+# Claude 腔负样本:为覆盖检测规则虚构的合成文章(人物、经历、数字均为编造)
 CLAUDE_SAMPLE = (_FIXTURES / "claude_tells.md").read_text(encoding="utf-8")
 
 # A deliberately "AI-looking" sample: stuffed with blacklist phrases,
@@ -265,7 +265,7 @@ def test_human_sample_low_and_claude_sample_higher():
 def test_advisory_does_not_change_score_or_exit():
     """advisory 不计分(DR-3):同一篇文章加上 brief/账号上下文,总分不变。"""
     _, a = ai_score.check_ai_score(CLAUDE_SAMPLE)
-    _, b = ai_score.check_ai_score(CLAUDE_SAMPLE, brief_text="---\nexperiences:\n  - 我当时就乐了\n---\n", account="tech")
+    _, b = ai_score.check_ai_score(CLAUDE_SAMPLE, brief_text="---\nexperiences:\n  - 我当时就笑出声了\n---\n", account="tech")
     assert a["total_score"] == b["total_score"] and a["advisory"] != b["advisory"]
 
 
@@ -292,7 +292,7 @@ def test_zero_width_stripped_before_lint_and_scored_as_artifact():
 
 
 def test_digest_pile_then_turn_flagged():
-    _, report = ai_score.check_ai_score("正文。\n", digest="4667 个赞、361 条评论、等了 13 个月,换来的是一行 changelog。")
+    _, report = ai_score.check_ai_score("正文。\n", digest="5213 次重试、208 条告警、拖了 9 个星期,换来的是一行 hotfix。")
     assert ("triad", "digest") in {(a["id"], a["kind"]) for a in report["advisory"]}
 
 
@@ -310,7 +310,7 @@ def test_analyze_200k_chars_under_3s():
 
 
 def test_ctx_passthrough_title_digest():
-    _, report = ai_score.check_ai_score("正文很普通。\n", title="这不是升级,而是范式转移", digest="真正的卖点不是快,是便宜")
+    _, report = ai_score.check_ai_score("正文很普通。\n", title="这不是升级,而是范式转移", digest="真正的亮点不是大,是轻")
     kinds = {(a["id"], a["kind"]) for a in report["advisory"]}
     assert ("neg_contrast", "title") in kinds and ("salience", "digest") in kinds
 
@@ -351,7 +351,7 @@ def test_phrase_scoring_rules():
 # ---------- structural(DC-11) ----------
 
 def test_structural_cross_paragraph_and_negatives():
-    xline = "一是把 prompt 拆成固定 block。\n\n二是把避坑条目做成 checklist。\n\n三是 skill 从数据生成。\n"
+    xline = "一是把依赖拆成独立 layer。\n\n二是把常用镜像做成 baseline。\n\n三是缓存键从锁文件生成。\n"
     assert ai_score.score_structural_perfection(xline)[1]["hit_count"] == 1
     assert ai_score.score_structural_perfection("一、背景\n\n二、方案\n\n三、效果\n")[0] == 0
     assert ai_score.score_structural_perfection("一是一,二是二,三是三,账要算清楚。")[0] == 0

@@ -14,7 +14,7 @@ import zh_tells
 ROOT = Path(__file__).resolve().parent.parent
 BRIEF_NONE = "---\ntopic: x\nexperiences:\n  - 无\n---\n"
 BRIEF_REAL = ("---\ntopic: x\nexperiences:\n"
-              "  - \"2026-08-09 | 在本机跑 Codex 子代理流程 | 两天烧掉 27.8 亿 token\"\n---\n")
+              "  - \"2026-03-14 | 在本机跑 Python 备份脚本 | 一晚扫描 41.6 万 file\"\n---\n")
 
 
 def _keep(item: dict, reason: str) -> str:
@@ -32,7 +32,7 @@ def test_brief_experiences_reason_rejected_when_brief_has_none():
 
 
 def test_brief_line_reason_must_point_at_matching_line():
-    item = {**EXP, "excerpt": "我在本机跑 Codex 子代理流程,两天烧掉 27.8 亿 token"}
+    item = {**EXP, "excerpt": "我在本机跑 Python 备份脚本,一晚扫描 41.6 万 file"}
     good = _keep(item, "见 brief L4 用户亲历")
     bad = _keep(item, "见 brief L2 用户亲历")          # L2 是 topic 行
     assert not H.uncovered([item], good, han=1000, brief_text=BRIEF_REAL)
@@ -56,7 +56,7 @@ def _ids(md: str, brief: str | None = None) -> list[str]:
 
 
 def test_fabricated_sentence_next_to_sourced_one_is_reported():
-    md = ("# 标题\n\n我在本机跑 Codex 子代理流程,两天烧掉 27.8 亿 token。"
+    md = ("# 标题\n\n我在本机跑 Python 备份脚本,一晚扫描 41.6 万 file。"
           "去年我在老东家也踩过一样的坑,改了三次才好。\n")
     assert "unsourced_experience" in _ids(md, BRIEF_REAL)
 
@@ -108,7 +108,7 @@ def _run(args: list[str]) -> subprocess.CompletedProcess:
 def test_check_log_fails_without_log_and_passes_when_clean(tmp_path):
     dirty = tmp_path / "a" / "article.md"
     dirty.parent.mkdir()
-    dirty.write_text("# 标题\n\n> 摘要写一件具体的事。\n\n这不是还没做完,这是设计。那不是 bug,而是特性。"
+    dirty.write_text("# 标题\n\n> 摘要写一件具体的事。\n\n这不是没写完,这是故意的。那不是 bug,而是特性。"
                      "它不是慢,而是稳。这不是缺陷,这是取舍。\n", encoding="utf-8")
     assert _run([str(dirty), "--check-log"]).returncode == 1
     clean = tmp_path / "b" / "article.md"
@@ -138,11 +138,11 @@ def test_account_flag_accepts_new_accounts(tmp_path):
 # ---------- 复核遗留:亲历出处只认 experiences,门槛对齐 covered,剔除题目通用词 ----------
 
 FAKE = {"id": "unsourced_experience", "line": 9, "scope": "position",
-        "excerpt": "去年我在老东家用 Claude Code 维护 AGENTS.md 时踩过一样的坑"}
-BRIEF_TOPIC = ('---\ntopic: "Claude Code 终于读 AGENTS.md 了"\nkeywords: [Claude Code, AGENTS.md]\n'
-               'experiences:\n  - 无\nmaterials:\n  - "Claude Code 2.1 开始读取 AGENTS.md | https://example.com/changelog"\n---\n')
-BRIEF_OTHER = ('---\ntopic: "Claude Code 终于读 AGENTS.md 了"\nkeywords: [Claude Code, AGENTS.md]\nexperiences:\n'
-               '  - "9 月 18 日 | 在公司 monorepo 升级 Claude Code | 发现 AGENTS.md 没被加载"\n---\n')
+        "excerpt": "去年我在老东家用 Chrome 测 JPEG XL 时踩过一样的坑"}
+BRIEF_TOPIC = ('---\ntopic: "Chrome 终于支持 JPEG XL 了"\nkeywords: [Chrome, JPEG XL]\n'
+               'experiences:\n  - 无\nmaterials:\n  - "Chrome 136 开始解码 JPEG XL | https://example.com/changelog"\n---\n')
+BRIEF_OTHER = ('---\ntopic: "Chrome 终于支持 JPEG XL 了"\nkeywords: [Chrome, JPEG XL]\nexperiences:\n'
+               '  - "5 月 6 日 | 在公司内网升级 Chrome | 发现 JPEG XL 没被解码"\n---\n')
 
 
 @pytest.mark.parametrize("brief,reason", [
@@ -171,9 +171,9 @@ def test_sentence_count_mismatch_falls_back_to_unsourced():
 
 # ---------- 第二轮审查 Minor 1:analyze 只跑一遍检测规则,lint 复用 scan 结果 ----------
 
-MD_SCAN = ("# 标题\n\n> 真正的卖点不是快,是便宜。\n\n这不是还没做完,这是设计。去年我在老东家也踩过一样的坑。\n\n"
+MD_SCAN = ("# 标题\n\n> 真正的亮点不是大,是轻。\n\n这不是没写完,这是故意的。去年我在老东家也踩过一样的坑。\n\n"
            "## 小节\n\n他说“这个参数别动”。说到底,一切都是取舍。\n")
-SCAN_CTX = {"brief_text": BRIEF_REAL, "account": "main", "title": "这不是升级,而是范式转移", "digest": "真正的卖点不是快,是便宜"}
+SCAN_CTX = {"brief_text": BRIEF_REAL, "account": "main", "title": "这不是升级,而是范式转移", "digest": "真正的亮点不是大,是轻"}
 
 
 def test_analyze_runs_rule_scan_once(monkeypatch):

@@ -36,10 +36,10 @@ def _ids(result):
 
 # ---------- 排序与窗口 ----------
 def test_date_key_mixed_naming_order(tmp_path):
-    for n in ("2026-10-01-b", "20260920-a", "2026-09-30-c"):
+    for n in ("2026-10-01-b", "20260907-a", "2026-09-30-c"):
         _art(tmp_path, n, _doc())
     names = [p.parent.name for p in FP.list_articles(tmp_path, "main")]
-    assert names == ["20260920-a", "2026-09-30-c", "2026-10-01-b"]
+    assert names == ["20260907-a", "2026-09-30-c", "2026-10-01-b"]
 
 
 def test_history_only_before_current_and_limited(tmp_path):
@@ -59,11 +59,11 @@ def test_opening_hook_from_yaml_and_bullet_brief(tmp_path):
 
 
 def test_opening_class_rules():
-    assert FP.opening_class("`2,768,000,000`。") == "number"
+    assert FP.opening_class("`3,416,000,000`。") == "number"
     assert FP.opening_class("2024 年 3 月 5 日，国务院总理在政府工作报告中提出。") == "other"
     assert FP.opening_class("“这个能用吗？”他问。") == "quote"
-    assert FP.opening_class("你有没有算过一次会话烧多少钱？") == "question"
-    assert FP.opening_class("上周五凌晨两点，我盯着账单发呆。") == "scene"
+    assert FP.opening_class("你有没有算过一次搬家要花多少钱？") == "question"
+    assert FP.opening_class("上周五凌晨两点，我盯着空白文档发呆。") == "scene"
     assert FP.opening_class("上周三，市场监管总局通报了一批不合格产品。") == "other"
     assert FP.opening_class("先看三个数。") == "staged"
 
@@ -79,24 +79,24 @@ def _ending(tmp_path, paras, name="2026-09-01-a"):
 
 
 def test_ending_cta_found_before_last_para(tmp_path):
-    tags = _ending(tmp_path, ["如果你手上有 agent 在跑，今天可以花十分钟做一件事：翻一遍日志。",
-                              "我上周数了一遍我自己的。比我以为的多得多。"])
+    tags = _ending(tmp_path, ["如果你家里有台老冰箱，今天抽五分钟试一件事：摸一下门封条。",
+                              "我昨晚摸了我家那台。比我想的松多了。"])
     assert "cta" in tags and "punchline" in tags
 
 
 def test_ending_last_para_categories(tmp_path):
-    assert "aphorism" in _ending(tmp_path, ["前面一段比较长的正文。", "代码会变。这个判断大概不会。"], "2026-09-01-a")
+    assert "aphorism" in _ending(tmp_path, ["前面一段比较长的正文。", "工具会换。这个习惯大概不会。"], "2026-09-01-a")
     assert "link_or_cmd" in _ending(tmp_path, ["仓库在 `github.com/x/y`，自己去看。"], "2026-09-02-b")
     assert "engage" in _ending(tmp_path, ["两种方案都试过了。你会怎么选？"], "2026-09-03-c")
     assert "question" in _ending(tmp_path, ["这件事最后会怎样，还没有人知道？"], "2026-09-04-d")
 
 
 def test_ending_skips_boilerplate(tmp_path):
-    assert "aphorism" in _ending(tmp_path, ["代码会变。这个判断大概不会。", "（全文完）"])
+    assert "aphorism" in _ending(tmp_path, ["工具会换。这个习惯大概不会。", "（全文完）"])
 
 
 def test_cta_repeat_advisory(tmp_path):
-    cta = _doc(sections=(("收尾", ["这周抽十分钟，把日志翻一遍。", "就这些。后面再说说别的事情吧。"]),))
+    cta = _doc(sections=(("收尾", ["这周抽十分钟，把衣柜翻一遍。", "就这些。后面再说说别的事情吧。"]),))
     paths = _series(tmp_path, [cta, _doc(), cta])
     res = FP.run(paths[-1], "main", tmp_path, last=5)
     assert "ending_cta" in _ids(res)
@@ -189,32 +189,32 @@ def test_series_exempts_opening_and_heading_not_tics(tmp_path):
 
 # ---------- 标题 / 摘要 / 小标题形状 ----------
 def test_title_shape_tags():
-    assert "comma_turn" in FP.title_shape("Claude Code 终于读 AGENTS.md 了，但先别急着删 symlink")
-    assert "colon" in FP.title_shape("Apache 收编了一个 AI Agent，开口第一句是：聊天记录不算数")
-    assert "question" in FP.title_shape("27.8 亿 token 烧在哪了？我扒了 793MB 会话日志")
-    assert FP.title_shape("我把 Code Agent 拆成了 23 节可运行的课") == []
+    assert "comma_turn" in FP.title_shape("Chrome 新版默认开了省电模式，老插件可能要跟着改")
+    assert "colon" in FP.title_shape("Git 加了一个实验命令，文档第一行就写着：别在生产仓库用")
+    assert "question" in FP.title_shape("4.7 万张照片存哪去了？我翻遍了 41GB 备份盘")
+    assert FP.title_shape("我把 Python 装饰器画成了 17 张手绘图") == []
 
 
 def test_title_shape_streak(tmp_path):
-    mds = [_doc(title=t) for t in ("他做了一件事，然后放弃了", "一个人拆了很多图，把它写成协议", "模型终于更新了，但先别急")]
+    mds = [_doc(title=t) for t in ("他学了三年钢琴，后来卖掉了", "一个人修了很多旧车，把它写成手册", "地图又改版了，老用户先别慌")]
     paths = _series(tmp_path, mds)
     assert "title_shape_streak" in _ids(FP.run(paths[-1], "main", tmp_path, last=5))
 
 
 def test_digest_shape_tags():
-    assert "neg_contrast" in FP.digest_shape("结论比我想的难堪：钱不是花在想上，是花在重复念稿上。")
-    tags = FP.digest_shape("4667 个赞、361 条评论、等了 13 个月，换来的是一行 changelog。")
+    assert "neg_contrast" in FP.digest_shape("结果比我想的尴尬：时间不是花在写上，是花在反复对表上。")
+    tags = FP.digest_shape("2380 个星标、157 个 issue、等了 9 个月，换来的是一行 README。")
     assert "number_pile" in tags and "turn" in tags
 
 
 def test_digest_shape_streak(tmp_path):
-    mds = [_doc(digest=d) for d in ("钱不是花在想上，是花在念稿上。", "这不是估算，这是实测。", "问题不在模型，而在流程。")]
+    mds = [_doc(digest=d) for d in ("时间不是花在写上，是花在对表上。", "这不是估算，这是实测。", "问题不在模型，而在流程。")]
     paths = _series(tmp_path, mds)
     assert "digest_shape_streak" in _ids(FP.run(paths[-1], "main", tmp_path, last=5))
 
 
 def test_heading_shape(tmp_path):
-    colon = [("先别删：三个原因", ["正文。"]), ("拆第一层：入口", ["正文。"]), ("拆第二层：历史", ["正文。"])]
+    colon = [("先别买：三个原因", ["正文。"]), ("拆第一层：入口", ["正文。"]), ("拆第二层：历史", ["正文。"])]
     short = [("先看数字", ["正文。"]), ("账单", ["正文。"]), ("你该抄什么", ["正文。"])]
     assert FP.heading_shape([h for h, _ in colon]) == "colon"
     assert FP.heading_shape([h for h, _ in short]) == "short"
@@ -225,9 +225,9 @@ def test_heading_shape(tmp_path):
 
 
 def test_h2_similarity(tmp_path):
-    secs = (("上下文窗口怎么被吃掉", ["正文。"]), ("子代理为什么背着整段历史", ["正文。"]))
-    other = (("缓存命中率说明什么", ["正文。"]), ("账单里的输入输出比", ["正文。"]))
-    assert FP.h2_similarity(["A 上下文窗口 3"], ["上下文窗口 B"]) == 1.0
+    secs = (("冰箱电费怎么被吃掉", ["正文。"]), ("压缩机为什么整夜不停", ["正文。"]))
+    other = (("门封条老化说明什么", ["正文。"]), ("电表上的峰谷比例", ["正文。"]))
+    assert FP.h2_similarity(["A 冰箱电费 3"], ["冰箱电费 B"]) == 1.0
     paths = _series(tmp_path, [_doc(sections=other), _doc(sections=secs), _doc(sections=secs)])
     assert "h2_similar" in _ids(FP.run(paths[-1], "main", tmp_path, last=5))
     paths = _series(tmp_path / "x", [_doc(sections=other), _doc(sections=other), _doc(sections=secs)])
@@ -235,9 +235,9 @@ def test_h2_similarity(tmp_path):
 
 
 def test_simile_recorded_and_repeat(tmp_path):
-    mds = [_tic_doc(s) for s in ("架构图画得像地铁线路。", "普通的一句话。", "这套流程也像地铁线路。")]
+    mds = [_tic_doc(s) for s in ("依赖图画得像蜘蛛网。", "普通的一句话。", "这套流程也像蜘蛛网。")]
     paths = _series(tmp_path, mds)
-    assert "地铁线路" in FP.features(paths[0])["similes"]
+    assert "蜘蛛网" in FP.features(paths[0])["similes"]
     assert "simile_repeat" in _ids(FP.run(paths[-1], "main", tmp_path, last=5))
 
 
