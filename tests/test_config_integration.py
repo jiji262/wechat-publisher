@@ -20,7 +20,8 @@ def _prepare_isolated_skill_root(tmp_path: Path) -> tuple[Path, Path, Path]:
     scripts_dir = skill_root / "scripts"
     scripts_dir.mkdir(parents=True)
 
-    for filename in ("config.py", "generate_image.py", "baoyu_image_gen_core.ts"):
+    for filename in ("config.py", "generate_image.py", "baoyu_image_gen_core.ts",
+                     "forbidden_terms.py", "zh_chars.py", "zh_text.py"):
         shutil.copy(repo_root / "scripts" / filename, scripts_dir / filename)
 
     (skill_root / "wechat-publisher.yaml").write_text(
@@ -237,8 +238,8 @@ def test_generate_image_uses_global_generator_when_accounts_are_incomplete(tmp_p
     scripts_dir.mkdir(parents=True)
 
     repo_root = Path(__file__).resolve().parents[1]
-    shutil.copy(repo_root / "scripts" / "config.py", scripts_dir / "config.py")
-    shutil.copy(repo_root / "scripts" / "generate_image.py", scripts_dir / "generate_image.py")
+    for filename in ("config.py", "generate_image.py", "forbidden_terms.py", "zh_chars.py", "zh_text.py"):
+        shutil.copy(repo_root / "scripts" / filename, scripts_dir / filename)
 
     (skill_root / "wechat-publisher.yaml").write_text(
         textwrap.dedent(

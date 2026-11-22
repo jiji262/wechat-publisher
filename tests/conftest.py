@@ -152,3 +152,25 @@ def no_network(monkeypatch):
         pass
 
     yield
+
+
+# ---------------------------------------------------------------------------
+# Forbidden terms: hermetic by default
+# ---------------------------------------------------------------------------
+
+import forbidden_terms as _forbidden_terms  # noqa: E402
+
+REAL_LOAD_TERMS = _forbidden_terms.load_terms
+
+
+@pytest.fixture(autouse=True)
+def _no_forbidden_terms(monkeypatch):
+    """默认不读本机 wechat-publisher.yaml 的词表(tmp 路径里可能带本机用户名);
+    要测词表的用例自己 monkeypatch load_terms,或请求 real_forbidden_terms。"""
+    monkeypatch.setattr(_forbidden_terms, "load_terms", lambda: [])
+
+
+@pytest.fixture
+def real_forbidden_terms(monkeypatch):
+    """恢复真实 load_terms(从 config 读 forbidden_terms),配合 write_config_yaml 用。"""
+    monkeypatch.setattr(_forbidden_terms, "load_terms", REAL_LOAD_TERMS)

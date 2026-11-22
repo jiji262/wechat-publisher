@@ -177,6 +177,21 @@ def list_accounts() -> List[Dict[str, Any]]:
     return result
 
 
+def get_forbidden_terms() -> List[str]:
+    """顶层 forbidden_terms:发布内容和生图 prompt 里不许出现的词。未配置返回 []。
+
+    写法: list 或逗号分隔字符串。类型不对就报错(fail-closed),不静默当成没配置。
+    """
+    value = _load_unified_yaml().get("forbidden_terms")
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = value.split(",")
+    if not isinstance(value, list):
+        raise ConfigError("wechat-publisher.yaml 的 forbidden_terms 必须是字符串列表")
+    return [str(v).strip() for v in value if v is not None and str(v).strip()]
+
+
 def get_global_image_generator() -> str:
     """读取全局 image_generation.generator；缺失时返回空串。"""
     yaml_config = _load_config_yaml()

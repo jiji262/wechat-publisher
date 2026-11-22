@@ -44,6 +44,7 @@ from html_converter import (
 )
 from article_meta import extract_digest_from_markdown, extract_title_from_markdown  # 标题/摘要唯一口径(E5)
 from image_handler import process_article_images, extract_images_from_markdown, missing_local_images
+import forbidden_terms
 
 
 # ============================================================
@@ -276,6 +277,16 @@ def _account_key(account_name=None):
 # Markdown 文本处理工具
 # ============================================================
 
+def _resolve_author(author, account_name):
+    """未传 author 时从账号配置读取;没配置则留空。"""
+    if author is not None:
+        return author
+    try:
+        return get_config(account_name).get("author", "")
+    except ConfigError:
+        return ""
+
+
 def remove_title_from_content(md_content):
     """从内容中移除标题行（避免在正文中重复显示标题）"""
     lines = md_content.split("\n")
@@ -389,6 +400,10 @@ def publish_from_markdown(
     # 2. 先定最终标题和摘要:门禁查的必须是要发布的这一份(无 H1 时的回退标题、全文第一个引用块做摘要都算)
     title = strip_zero_width_chars(title or extract_title_from_markdown(md_content))   # --title/--digest 也清(E4)
     digest = strip_zero_width_chars(digest or extract_digest_from_markdown(md_content))
+    author = _resolve_author(author, account_name)
+
+    # 禁用词硬门:不受 skip_ai_score 影响,在任何上传之前
+    forbidden_terms.abort_if_found({"标题": title, "摘要": digest, "作者": author, "正文": md_content})
 
     # 3. AI 味检测(在图片上传前,失败时避免浪费素材库配额)
     if not skip_ai_score:
@@ -467,15 +482,7 @@ def publish_from_markdown(
         print("  微信公众号要求每篇文章必须有封面图")
         sys.exit(1)
 
-    # 8. 如未提供 author,从账号配置兜底读取
-    if author is None:
-        try:
-            cfg = get_config(account_name)
-            author = cfg.get("author", "")
-        except ConfigError:
-            author = ""
-
-    # 9. 发布到草稿箱
+    # 8. 发布到草稿箱(author 已在禁用词检查前定好)
     print("\n[步骤5] 发布到草稿箱...")
     result = publish_article(
         title=title,
@@ -585,6 +592,9 @@ def publish_from_brief(
     # 短文本(和标题一样先清掉零宽字符,D2)
     short_text = strip_zero_width_chars((sections.get("短文本") or sections.get("短描述") or "").strip())
     final_title = strip_zero_width_chars(final_title)
+    author = _resolve_author(author, final_account)
+    forbidden_terms.abort_if_found({"标题": final_title, "短文本": short_text, "作者": author,
+                                    "卡片要点": "\n".join(card_points(sections))})
 
     print("=" * 60)
     print("微信公众号贴图(newspic)发布")
@@ -633,15 +643,7 @@ def publish_from_brief(
         print(f"  API 连接失败: {e}")
         raise SystemExit(1)
 
-    # 作者兜底
-    if author is None:
-        try:
-            cfg = get_config(final_account)
-            author = cfg.get("author", "") or ""
-        except ConfigError:
-            author = ""
-
-    # 上传 + 建草稿
+    # 上传 + 建草稿(author 已在禁用词检查前定好)
     print("\n[步骤2] 上传图片 + 创建贴图草稿...")
     result = publish_newspic(
         title=final_title,
@@ -733,14 +735,8 @@ def publish_from_html(
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = strip_zero_width_chars(f.read())
     title, digest = strip_zero_width_chars(title), strip_zero_width_chars(digest or "")
-
-    # 如未提供 author,从账号配置兜底读取
-    if author is None:
-        try:
-            cfg = get_config(account_name)
-            author = cfg.get("author", "")
-        except ConfigError:
-            author = ""
+    author = _resolve_author(author, account_name)
+    forbidden_terms.abort_if_found({"标题": title, "摘要": digest, "作者": author, "HTML": html_content})
 
     result = publish_article(
         title=title,

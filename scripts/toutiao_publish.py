@@ -109,6 +109,8 @@ def _load_and_gate(md_path, ai_score_threshold, skip_ai_score, *,
     print(f"读取文章：{md_file} ({len(md_content)} 字符)")
     md_content = strip_zero_width_chars(md_content)
     resolved_title = _resolve_title(md_content, title)
+    import forbidden_terms   # 禁用词硬门不受 skip_ai_score 影响(与微信同一词表)
+    forbidden_terms.abort_if_found({"标题": resolved_title, "正文": md_content})
     if not skip_ai_score:
         run_ai_score_gate(md_content, ai_score_threshold, md_path=md_file,
                           title=resolved_title, account=account)

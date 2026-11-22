@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from config import ConfigError, get_config, get_global_image_generator, load_env
+import forbidden_terms
 
 
 DEFAULT_GENERATOR = "baoyu-image-gen"
@@ -137,8 +138,20 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _prompt_sources(args: argparse.Namespace) -> dict:
+    """要发给生图后端的文字:--prompt 和每个 --promptfiles 文件(不存在的交给后端报错)。"""
+    sources = {"prompt": args.prompt or ""}
+    for name in args.promptfiles or []:
+        path = Path(name)
+        if path.is_file():
+            sources[f"promptfile {path.name}"] = path.read_text(encoding="utf-8")
+    return sources
+
+
 def main(argv: List[str]) -> int:
     args = parse_args(argv)
+    # 图里的字生成后查不了,禁用词在 prompt 阶段就拦下
+    forbidden_terms.abort_if_found(_prompt_sources(args))
     generator, cmd = build_command(args)
 
     if args.print_command:

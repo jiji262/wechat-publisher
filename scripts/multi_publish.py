@@ -293,6 +293,8 @@ def run(
     # 图片路径提醒
     print("\n[检查 2/2] 图片路径...")
     md_content = Path(md_path).read_text(encoding="utf-8")
+    import forbidden_terms   # 单独运行同步也过禁用词硬门
+    forbidden_terms.abort_if_found({"标题": title or "", "正文": md_content})
     local_imgs, remote_imgs = scan_local_images(md_content)
     print(f"  远程 URL 图片: {len(remote_imgs)} 张(wechatsync 会自动转存)")
     if local_imgs:

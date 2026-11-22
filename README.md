@@ -61,6 +61,9 @@ image_generation:
 
 integrations:
   wechatsync_mcp_token: ""
+
+# 可选:发布内容和生图 prompt 里不许出现的词(大小写不敏感),命中即拒发
+forbidden_terms: []
 ```
 
 在[微信公众平台](https://mp.weixin.qq.com) → 设置与开发 → 基本配置 获取 AppID / AppSecret,并把 `curl ifconfig.me` 得到的公网 IP 加入「IP 白名单」(否则报 `40164`)。验证连接:
@@ -98,7 +101,7 @@ python3 scripts/publish.py --input article.md --platform toutiao
 python3 scripts/publish.py --input article.md --platform wechat,toutiao
 ```
 
-`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做发布预检(风格仅提示；同形字、中文里残留的半角标点与出处缺口阻断)→ 本地缺图检查(引用的本地图片不存在就在上传前中止)→ 图片处理 → HTML 转换 → 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
+`publish.py` 会从 `wechat-publisher.yaml` 读 author / theme,依次做发布预检(风格仅提示；配置里的禁用词、同形字、中文里残留的半角标点与出处缺口阻断，禁用词不受 `--skip-ai-score` 影响)→ 本地缺图检查(引用的本地图片不存在就在上传前中止)→ 图片处理 → HTML 转换 → 封面上传 → 创建草稿。每个脚本 `--help` 查看完整参数。
 
 ## 排版主题
 
