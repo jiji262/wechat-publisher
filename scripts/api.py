@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import requests
 
+import forbidden_terms
 from config import get_config, set_account
 from wechat_token import get_access_token
 
@@ -316,6 +317,9 @@ def publish_article(
     if not author:
         author = config.get("author", "")
 
+    # 禁用词硬门放在最底层:wechat_api.py draft 等直接入口也绕不过
+    forbidden_terms.abort_if_found({"标题": title, "摘要": digest, "作者": author, "HTML": html_content})
+
     account_display = config.get("account_name", "default")
     print(f"开始发布文章: {title}")
     print(f"目标账号: {account_display}")
@@ -373,6 +377,8 @@ def publish_newspic(
     config = get_config(account_name)
     if not author:
         author = config.get("author", "")
+
+    forbidden_terms.abort_if_found({"标题": title, "短文本": content, "作者": author})
 
     account_display = config.get("account_name", "default")
     print(f"开始发布贴图: {title or '(无标题)'}")

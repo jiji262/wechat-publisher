@@ -9,6 +9,7 @@ import textwrap
 
 import pytest
 
+import api
 import config
 import forbidden_terms
 import generate_image
@@ -90,7 +91,8 @@ def test_abort_prints_masked_location(capsys):
 
 
 def test_cli_exit_codes(tmp_path, terms, capsys):
-    clean, dirty = tmp_path / "clean.md", tmp_path / "dirty.md"
+    (tmp_path / TERM).mkdir()
+    clean, dirty = tmp_path / "clean.md", tmp_path / TERM / "dirty.md"   # 目录名含禁用词也不回显
     clean.write_text("没有问题\n", encoding="utf-8")
     dirty.write_text(f"路径 /Users/{TERM}/x\n", encoding="utf-8")
     assert forbidden_terms.main([str(clean)]) == 0
@@ -198,6 +200,29 @@ def test_html_publish_blocks(tmp_path, monkeypatch, capsys, tmp_config_yaml, no_
     with pytest.raises(SystemExit):
         publish.publish_from_html(html, "标题", str(tmp_path / "c.jpg"), author="a")
     _blocked_here(capsys)
+
+
+def test_api_publish_article_blocks_before_upload(monkeypatch, capsys, terms):
+    monkeypatch.setattr(api, "get_config", lambda name=None: {"author": "a", "account_name": "m"})
+    monkeypatch.setattr(api, "upload_thumb_image", lambda p: (_ for _ in ()).throw(_ReachedApi()))
+    with pytest.raises(SystemExit):
+        api.publish_article("标题", f"<p>{TERM}</p>", "c.jpg")
+    _blocked_here(capsys)
+
+
+def test_api_publish_newspic_blocks_before_upload(monkeypatch, capsys, terms):
+    monkeypatch.setattr(api, "get_config", lambda name=None: {"author": f"{TERM}", "account_name": "m"})
+    monkeypatch.setattr(api, "upload_newspic_image", lambda p: (_ for _ in ()).throw(_ReachedApi()))
+    with pytest.raises(SystemExit):
+        api.publish_newspic("标题", "短文本", ["a.png"])
+    _blocked_here(capsys)
+
+
+def test_api_clean_article_reaches_upload(monkeypatch, terms):
+    monkeypatch.setattr(api, "get_config", lambda name=None: {"author": "a", "account_name": "m"})
+    monkeypatch.setattr(api, "upload_thumb_image", lambda p: (_ for _ in ()).throw(_ReachedApi()))
+    with pytest.raises(_ReachedApi):
+        api.publish_article("标题", "<p>正文</p>", "c.jpg")
 
 
 def test_toutiao_blocks_even_when_skipping_gate(tmp_path, capsys, terms):

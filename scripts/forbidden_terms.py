@@ -87,7 +87,7 @@ def main(argv: list[str]) -> int:
     if not terms:
         print("未配置 forbidden_terms，跳过禁用词检查")
         return 0
-    sources = {p: Path(p).read_text(encoding="utf-8") for p in argv}
+    sources = {Path(p).name: Path(p).read_text(encoding="utf-8") for p in argv}   # 只用文件名:绝对路径本身可能含禁用词
     try:
         abort_if_found(sources, terms)
     except SystemExit as exc:
