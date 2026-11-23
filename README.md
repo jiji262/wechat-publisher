@@ -5,11 +5,13 @@
 ## 功能
 
 - **全网素材搜索**:围绕话题多轮搜索、交叉验证,筛选最新案例与权威观点
-- **AI 写作**:材料决定篇幅和结构；通过 `writing_context.py` 将当前材料、结构规划、技术文章的内容要求、本人样本和用户改稿反馈交给独立写作 pass。没有本人样本时明确采用账号编辑风格
+- **AI 写作**:材料决定篇幅；`writing_context.py` 将当前材料、结构库说明、结构规划、技术文章的内容要求、本人样本和用户改稿反馈交给独立写作 pass。没有本人样本时明确采用账号编辑风格
+- **技术文章结构**:先定读者任务(弄懂机制 / 复现操作 / 做选型 / 判断事件),再按理解依赖分节;每节推进一条论断,观点带条件,图只表达关系
+- **标题编辑检查**:生成 5 个角度不同的候选,用 `title_check.py` 查长度、具体对象、模板词、否定对照和夸张动词
 - **AI 配图**:初稿在需要的地方写图位,按图位配图(`scripts/generate_image.py` 手绘信息图,或排版卡),一篇内风格统一,支持 OpenAI / Gemini 后端
 - **微信排版**:Markdown → 微信兼容 HTML,样式全内联,内置 **15 套主题**,粘贴不丢样式
 - **一键发布**:封面、标题、摘要、作者自动填好,直达草稿箱
-- **去 AI 味改稿流程**:初稿快照 → `ai_score.py` 负向模式 lint(带行号的 advisory 清单)→ 按语境编辑(允许段落重组) → 全新上下文冷读 → `fidelity_check.py` 保真核对 + `fingerprint.py` 跨篇比对
+- **去 AI 味改稿流程**:初稿快照 → 结构层检查(标题、小标题、开篇、结尾、段落形状) → `ai_score.py` 负向模式 lint(带行号的 advisory 清单)→ 按语境编辑(允许段落重组) → 全新上下文冷读 → `fidelity_check.py` 保真核对 + `fingerprint.py` 跨篇比对
 - **发布预检**:风格分数、普通 advisory 与格式提示只供编辑参考，不阻断发布；同形字和未核对出处的亲历/引语仍拒发，零宽字符自动清除。句长、标点不计入总分；低分不证明自然，也不证明像本人
 
 ## 安装
@@ -80,7 +82,7 @@ python3 scripts/wechat_api.py list-accounts
 使用 /wechat-publisher 写一篇关于"大模型 Agent 最新进展"的公众号文章
 ```
 
-Skill 自动执行 7 阶段:搜索素材 → 按材料定结构 → 独立上下文撰写 → 改稿 pass(lint + 冷读 + 保真核对)→ 生成配图 → 排版转换 → AI 味 gate → 发布草稿 →(可选)多平台同步。完整流程见 [`SKILL.md`](SKILL.md)。
+Skill 自动执行 7 阶段:搜索素材 → 按材料定结构 → 独立上下文撰写 → 定标题 → 改稿 pass(lint + 冷读 + 保真核对)→ 生成配图 → 排版转换 → AI 味 gate → 发布草稿 →(可选)多平台同步。完整流程见 [`SKILL.md`](SKILL.md)。
 
 ### 命令行
 
@@ -95,6 +97,9 @@ python3 scripts/html_converter.py article.md --theme refined-blue -o article.htm
 # 单独跑 AI 味检测(--advisory 列出带行号的 artifacts 与 advisory 清单)
 python3 scripts/ai_score.py article.md --threshold 45
 python3 scripts/ai_score.py article.md --advisory --brief brief.md --account main
+
+# 标题候选检查(只提示,不阻断发布)
+python3 scripts/title_check.py "候选标题 1" "候选标题 2"
 
 # 发布到今日头条(首次需扫码一次,之后无人值守)
 python3 scripts/publish.py --input article.md --platform toutiao

@@ -120,3 +120,39 @@ def test_instructions_point_writer_at_outline_and_image_slots():
 
 def test_instructions_ask_for_fullwidth_punctuation():
     assert "全角标点" in writing_context.INSTRUCTIONS
+
+
+def test_instructions_point_writer_at_structure_guides():
+    assert "structure_guide" in writing_context.INSTRUCTIONS
+    assert "opening_guide" in writing_context.INSTRUCTIONS
+
+
+def test_structure_and_opening_guides_are_extracted(workspace):
+    root, brief = workspace
+    (root / "references" / "article-structures.md").write_text(
+        "#### 文章结构库\n\n"
+        "| `article_structure` | 适合题材 | 可选要素 |\n|---|---|---|\n"
+        "| `playbook` 行动清单 | 方法论 | 适用人群、最短路径 |\n\n"
+        "#### 开头钩子库\n\n"
+        "| `opening_hook` | 写法 | 避免 |\n|---|---|---|\n"
+        "| `hard-number` | 第一屏出现数字 | 数字单独成段 |\n",
+        encoding="utf-8",
+    )
+    result = writing_context.build_context(brief, root=root)
+    assert result["structure_guide"] == {"name": "playbook", "fits": "方法论", "elements": "适用人群、最短路径"}
+    assert result["opening_guide"] == {"name": "hard-number", "how": "第一屏出现数字", "avoid": "数字单独成段"}
+
+
+def test_missing_structure_library_returns_none(workspace):
+    root, brief = workspace
+    result = writing_context.build_context(brief, root=root)
+    assert result["structure_guide"] is None
+    assert result["opening_guide"] is None
+
+
+def test_repo_structure_library_parses_teardown_and_hard_number():
+    guide = (writing_context.ROOT / "references" / "article-structures.md").read_text(encoding="utf-8")
+    teardown = writing_context._table_guide(guide, "文章结构库", "teardown", ("fits", "elements"))
+    assert teardown and "整体结构" in teardown["elements"]
+    hook = writing_context._table_guide(guide, "开头钩子库", "hard-number", ("how", "avoid"))
+    assert hook and "数字" in hook["how"]
